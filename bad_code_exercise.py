@@ -6,3 +6,4 @@ def get_condition(data):
     return False
 
 print(get_condition([1,2,3]))
+print()

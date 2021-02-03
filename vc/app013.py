@@ -1212,7 +1212,7 @@ def update_menu_group() -> None:
     else:
         result = update_group_items(working_group)
 
-
+print('test')
 external_data = load_json("../data/config.json")
 load_external_data(external_data)
 
