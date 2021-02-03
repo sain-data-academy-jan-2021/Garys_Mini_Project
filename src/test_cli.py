@@ -1,5 +1,5 @@
 import unittest
-from cli import validated_input
+from .cli import validated_input
 
 
 class TestValidatedInput(unittest.TestCase):

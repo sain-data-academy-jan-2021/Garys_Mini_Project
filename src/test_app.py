@@ -1,5 +1,5 @@
 import unittest
-from app import add_item_to_list, search_items_in_list, update_item_in_list, delete_item_in_list
+from .app import add_item_to_list, search_items_in_list, update_item_in_list, delete_item_in_list
 
 
 class TestAddItem(unittest.TestCase):

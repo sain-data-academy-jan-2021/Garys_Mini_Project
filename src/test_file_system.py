@@ -1,6 +1,6 @@
 import unittest
 from pathlib import Path
-from file_system import get_absolute_path
+from .file_system import get_absolute_path
 
 
 class TestGetAbsoultePath(unittest.TestCase):
