@@ -119,6 +119,38 @@ def validated_input(prompt: str, *types, input=input, **options) -> tuple[int, A
     if 'cancel_on' in options:
         if value == options['cancel_on']:
             return -1, 'Operation Cancelled'
+        
+    if float in types:
+        try:
+            value = float(value)
+
+            if 'max_value' in options:
+                if value > options['max_value']:
+                    return 0, fmt_string(f'Input [{value}] was greater than than allowed value [{options["max_value"]}]', fg='White', bg='Red')
+
+            if 'min_value' in options:
+                if value < options['min_value']:
+                    return 0, fmt_string(f'Input [{value}] was less than than allowed value [{options["min_value"]}]', fg='White', bg='Red')
+
+        except ValueError:
+            if str not in types and int not in types:
+                return 0, fmt_string(f'Input type ({str(type(value))}) is not one of the valid input type {str(types)}', fg='White', bg='Red')
+
+    if int in types:
+        try:
+            value = int(value)
+
+            if 'max_value' in options:
+                if value > options['max_value']:
+                    return 0, fmt_string(f'Input [{value}] was greater than than allowed value [{options["max_value"]}]', fg='White', bg='Red')
+
+            if 'min_value' in options:
+                if value < options['min_value']:
+                    return 0, fmt_string(f'Input [{value}] was less than than allowed value [{options["min_value"]}]', fg='White', bg='Red')
+
+        except ValueError:
+            if str not in types:
+                return 0, fmt_string(f'Input type ({str(type(value))}) is not one of the valid input type {str(types)}', fg='White', bg='Red')
 
     if 'unique' in options:
         if value in options['unique']:
@@ -127,50 +159,15 @@ def validated_input(prompt: str, *types, input=input, **options) -> tuple[int, A
     if 'is_present' in options:
         if value not in options['is_present']:
             return 0, fmt_string(f'Input value {value} can not be found in object', fg='White', bg='Red')
-        
-    if float in types:
-        try:
-            result = float(value)
 
-            if 'max_value' in options:
-                if result > options['max_value']:
-                    return 0, fmt_string(f'Input [{result}] was greater than than allowed value [{options["max_value"]}]', fg='White', bg='Red')
-
-            if 'min_value' in options:
-                if result < options['min_value']:
-                    return 0, fmt_string(f'Input [{result}] was less than than allowed value [{options["min_value"]}]', fg='White', bg='Red')
-
-            return 1, result
-
-        except ValueError:
-            if str not in types and int not in types:
-                return 0, fmt_string(f'Input type ({str(type(value))}) is not one of the valid input type {str(types)}', fg='White', bg='Red')
-
-    if int in types:
-        try:
-            result = int(value)
-
-            if 'max_value' in options:
-                if result > options['max_value']:
-                    return 0, fmt_string(f'Input [{result}] was greater than than allowed value [{options["max_value"]}]', fg='White', bg='Red')
-
-            if 'min_value' in options:
-                if result < options['min_value']:
-                    return 0, fmt_string(f'Input [{result}] was less than than allowed value [{options["min_value"]}]', fg='White', bg='Red')
-
-            return 1, result
-
-        except ValueError:
-            if str not in types:
-                return 0, fmt_string(f'Input type ({str(type(value))}) is not one of the valid input type {str(types)}', fg='White', bg='Red')
 
     if 'min_length' in options:
-        if len(value) < options['min_length']:
-            return 0, fmt_string(f'Length of input [{len(value)}] is less than the minimum length [{options["min_length"]}]', fg='White', bg='Red')
+        if len(str(value)) < options['min_length']:
+            return 0, fmt_string(f'Length of input [{len(str(value))}] is less than the minimum length [{options["min_length"]}]', fg='White', bg='Red')
 
     if 'max_length' in options:
-        if len(value) > options['max_length']:
-            return 0, fmt_string(f'Length of input [{len(value)}] is greater than the maximum length [{options["max_length"]}]', fg='White', bg='Red')
+        if len(str(value)) > options['max_length']:
+            return 0, fmt_string(f'Length of input [{len(str(value))}] is greater than the maximum length [{options["max_length"]}]', fg='White', bg='Red')
 
 
     return 1, value

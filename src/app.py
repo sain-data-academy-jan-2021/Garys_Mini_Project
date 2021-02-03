@@ -1,8 +1,10 @@
-from typing import Any, Union
-from src.cli import clear, dicts_to_table, fmt_string, get_validated_input, list_to_table, print_palette, print_table, validated_input, order_status
-from src.file_system import load_csv_to_dict, load_json, load_list, save_json, save_list, log, save_dict_to_csv
+from typing import Any, Hashable, Union
+from .cli import clear, dicts_to_table, fmt_string, get_validated_input, list_to_table, print_palette, print_table, validated_input, order_status
+from .file_system import load_csv_to_dict, load_json, load_list, save_json, save_list, log, save_dict_to_csv
 
 # region := Utils
+
+
 def sort_orders_by_status():
     orders = get_external_data('orders')
     for i in range(len(orders)):
@@ -51,6 +53,20 @@ def save_external_data(data: dict[str, Any]) -> None:
 def get_external_data(key: str, attr: str = 'data') -> Any:
     global external_data
     return external_data[key][attr]
+
+
+def summerise_list(lst: list) -> list[str]:
+    res = []
+    for i in range(len(lst)):
+        count = 0
+        for j in range(len(lst)):
+            if lst[i] == lst[j]:
+                count += 1
+        res.append(f"{count}x {lst[i]}")
+
+    res = list(set(res))
+    res.sort()
+    return res
 # endregion := Utils
 
 
@@ -120,10 +136,15 @@ def show_menu(menu_name: str) -> None:
 
 def print_data_view(key: str) -> None:
     data = get_external_data(key)
-
+    current_ids = [item['id'] for item in data]
     clear()
     dicts_to_table(data)
-    input(fmt_string('Press ENTER To Continue', fg='Green'))
+    if key == 'orders':
+        index = get_validated_input(
+            'Please Select An Id To View: ', int, fg='Blue', cancel_on='0', is_present=current_ids)
+        show_order_detail_menu(index)
+    else:
+        input(fmt_string('Press ENTER To Continue', fg='Green'))
 
 
 def show_add_item_menu(key: str) -> None:
@@ -276,74 +297,112 @@ def show_add_order_menu() -> None:
                     #                for courier in get_external_data('couriers')]
                     # clear()
                     # dicts_to_table(get_external_data('couriers'))
-                    
+
                     # new_value = get_validated_input(
                     #     f'Please Select {key.title()}: ', type(value), fg='Blue', is_present=courier_ids, cancel_on='0')
 
                 elif key == 'status':
                     new_value = 'pending'
                     # status_list = list(order_status.keys())
-                    
+
                     # clear()
                     # list_to_table(status_list, 'Status List', enumerate=True)
-                    
+
                     # new_value = status_list[get_validated_input(
-                    #     f'Please Select {key.title()}: ', int, fg='Blue', 
+                    #     f'Please Select {key.title()}: ', int, fg='Blue',
                     #     min_length=0, max_value=len(status_list),min_value=1, cancel_on='0') - 1]
-                
+
                 elif key == 'items':
                     new_value = []
-                
+
                 else:
                     new_value = get_validated_input(
                         f'Please Enter {key.title()}: ', type(value), fg='Blue', min_length=1, cancel_on='0')
-                    
 
                 if new_value == False:
                     return
 
                 new_dict[key] = new_value
-            
-            # Random crap to show order as it's being built    
+
+            # Random crap to show order as it's being built
             clear()
-            dicts_to_table(data) 
-            print('Creating New Order...\n')      
+            dicts_to_table(data)
+            print('Creating New Order...\n')
             for k, v in new_dict.items():
-                print(fmt_string(k.title(),fg='Cyan'),': ',fmt_string(str(v).title(), fg='White'))
+                print(fmt_string(k.title(), fg='Cyan'), ': ',
+                      fmt_string(str(v).title(), fg='White'))
             print()
-            
+
         successful = add_item_to_list(new_dict, data, 'name')
 
         clear()
         sort_orders_by_status()
         dicts_to_table(data)
-    
+
         if successful:
             if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
                 is_looping = False
+
+
+def get_value_from_key(*, source, get, where, equals) -> Any:
+    for dtn in source:
+        if dtn[where] == equals:
+            return dtn[get]
+    return False
+
 # endregion := View
 
 
-#region := TODO
+# region := TODO
 def show_order_detail_menu(order_id: int) -> None:
-    not_implemented()
-   
-    
+    clear()
+    orders = get_external_data('orders')
+    couriers = get_external_data('couriers')
+    products = get_external_data('products')
+
+    for order in orders:
+        if order['id'] == order_id:
+            for key, value in order.items():
+                if key != 'items' and key != 'courier':
+                    print(fmt_string(f'{key.title()}: ',
+                                     fg='Blue'), str(value).title(), '\n')
+                elif key == 'courier':
+                    if value != -1:
+                        courier_name = get_value_from_key(
+                            source=couriers, get='name', where='id', equals=value)
+                    else:
+                        courier_name = 'unassigned'
+
+                    print(fmt_string(f'{key.title()}: ',
+                                     fg='Blue'), courier_name, '\n')
+
+                elif key == 'items':
+                    items_list = []
+                    for item in value:
+                        item_name = get_value_from_key(
+                            source=products, get='name', where='id', equals=item)
+                        items_list.append(item_name)
+
+                    list_to_table(summerise_list(items_list), 'Current Order')
+
+    input()
+
+
 def show_update_status_menu() -> None:
     not_implemented()
-    
+
 
 def show_update_order_menu() -> None:
     not_implemented()
-    
+
 
 def show_delete_order_menu() -> None:
     not_implemented()
-    
-#endregion := TODO
+
+# endregion := TODO
 
 
-#region := Setup
+# region := Setup
 external_data = load_json('./data/config.json')
 load_external_data(external_data)
 
@@ -437,4 +496,4 @@ if __name__ == '__main__':
         show_menu(menu_state)
         save_external_data(external_data)
 
-#endregion :=Setup
+# endregion :=Setup
