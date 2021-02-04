@@ -1,5 +1,14 @@
 import unittest
-from .app import add_item_to_list, search_items_in_list, update_item_in_list, delete_item_in_list
+from unittest import mock
+from unittest.mock import patch
+from .app import (
+    add_item_to_list, get_dict_by_key, get_value_from_key, patch_value_from_key,
+    search_items_in_list, summerise_list,
+    update_item_in_list,
+    delete_item_in_list,
+    get_external_data,
+    sort_orders_by_status
+    )
 
 
 class TestAddItem(unittest.TestCase):
@@ -15,6 +24,7 @@ class TestAddItem(unittest.TestCase):
 
         # Then
         self.assertEquals(actual, expected)
+
 
     def test_should_not_update_list_on_duplicates(self):
         # Given
@@ -42,6 +52,7 @@ class TestUpdateItem(unittest.TestCase):
 
         # Then
         self.assertEquals(actual, expected)
+
 
     def test_should_return_false_if_id_not_found(self):
         # Given
@@ -74,6 +85,7 @@ class TestDeleteItem(unittest.TestCase):
 
         # Then
         self.assertEquals(actual, expected)
+
 
     def test_should_return_false_item_if_not_in_list(self):
         # Given
@@ -108,6 +120,7 @@ class TestSearchItem(unittest.TestCase):
         # Then
         self.assertEquals(expected, actual)
 
+
     def test_should_return_empty_list_on_none_matched_term(self):
         # Given
         list_to_search = [
@@ -124,5 +137,169 @@ class TestSearchItem(unittest.TestCase):
         self.assertEquals(expected, actual)
 
 
+@patch('src.app.external_data', {"test_dict": {"name": "test", "data": [], "location": "test.csv", "type": "csv"}})
+class TestGetExternalData(unittest.TestCase):
+
+    def test_should_return_correct_data(self):
+        # Given
+        key = 'test_dict'
+        attr = 'location'
+        expected = 'test.csv'
+
+        # When
+        actual = get_external_data(key, attr)
+
+        # Then
+        self.assertEquals(expected, actual)
+        
+    
+    def test_should_raise_key_error_on_invalid_key(self):
+        # Given
+        key = 'invalid_dict'
+        attr = 'location'
+
+        # When / Then
+        self.assertRaises(KeyError, lambda: get_external_data(key, attr))
+
+
+class TestSummeriseList(unittest.TestCase):
+    
+    def test_should_return_correct_summary(self):
+        #Given
+        lst = ['apple', 'banana', 'melon', 'apple']
+        expected = ['1x banana', '1x melon','2x apple']
+        
+        #When
+        actual = summerise_list(lst)
+
+        #Then
+        self.assertEquals(expected, actual)
+
+
+class TestGetDictByKey(unittest.TestCase):
+
+    def test_should_return_correct_dict(self):
+        #Given
+        dtn = [
+            {'id': '0', 'name': 'pepsi', 'price': '1.25'},
+            {'id': '1', 'name': 'coke', 'price': '1.25'},
+            {'id': '2', 'name': 'water', 'price': '1.25'}
+        ]
+        expected = {'id': '1', 'name': 'coke', 'price': '1.25'}
+    
+        #When
+        actual = get_dict_by_key(source=dtn, where='name', equals='coke')
+    
+        #Then
+        self.assertEquals(expected, actual)
+        
+
+    def test_should_return_false_if_not_found(self):
+        #Given
+        dtn = [
+            {'id': '0', 'name': 'pepsi', 'price': '1.25'},
+            {'id': '1', 'name': 'coke', 'price': '1.25'},
+            {'id': '2', 'name': 'water', 'price': '1.25'}
+        ]
+        expected = False
+        
+        #When
+        actual = get_dict_by_key(source=dtn, where='name', equals='vodka')
+        
+        #Then
+        self.assertEquals(expected, actual)
+        
+        
+    def test_should_raise_key_error_on_invalid_where(self):
+        #Given
+        dtn = [{'id': '0', 'name': 'pepsi', 'price': '1.25'}]
+        
+        #When / Then
+        self.assertRaises(KeyError, lambda: get_dict_by_key(
+            source=dtn, where='invalid', equals='vodka'))
+        
+        
+class TestGetValueFromBy(unittest.TestCase):
+
+    def test_should_return_correct_value(self):
+        #Given
+        dtn = [
+            {'id': '0', 'name': 'pepsi', 'price': '1.25'},
+            {'id': '1', 'name': 'coke', 'price': '1.20'}
+        ]
+        expected = '1.20'
+        
+        #When
+        actual = get_value_from_key(source=dtn, get='price', where='id', equals='1')
+        
+        #Then
+        self.assertEquals(expected, actual)
+        
+    def test_should_return_false_if_not_found(self):
+        #Given
+        dtn = [
+            {'id': '0', 'name': 'pepsi', 'price': '1.25'},
+            {'id': '1', 'name': 'coke', 'price': '1.20'}
+        ]
+        expected = False
+
+        #When
+        actual = get_value_from_key(
+            source=dtn, get='id', where='name', equals='water')
+
+        #Then
+        self.assertEquals(expected, actual)
+  
+  
+    def test_should_raise_key_error_on_invalid_where(self):
+        #Given
+        dtn = [{'id': '0', 'name': 'pepsi', 'price': '1.25'}]
+
+        #When / Then
+        self.assertRaises(KeyError, lambda: get_value_from_key(
+            source=dtn,get='id', where='invalid', equals='vodka'))
+        
+    def test_should_raise_key_error_on_invalid_get(self):
+        #Given
+        dtn = [{'id': '0', 'name': 'pepsi', 'price': '1.25'}]
+
+        #When / Then
+        self.assertRaises(KeyError, lambda: get_value_from_key(
+            source=dtn, get='invalid', where='name', equals='pepsi'))
+
+
+class TestPatchValueFromKey(unittest.TestCase):
+
+    def test_should_update_correct_key(self):
+        #Given
+        dtn = [
+            {'id': '0', 'name': 'pepsi', 'price': '1.25'},
+            {'id': '1', 'name': 'coke', 'price': '1.20'}
+        ]
+        expected = {'id': '0', 'name': 'pepsi', 'price': '1.50'}
+        
+        #When
+        actual = patch_value_from_key(source=dtn, patch='price', to='1.50', where='id', equals='0')
+        
+        #Then
+        self.assertEquals(expected, actual)
+        
+        
+    def test_should_return_false_if_key_not_found(self):
+        #Given
+        dtn = [
+            {'id': '0', 'name': 'pepsi', 'price': '1.25'},
+            {'id': '1', 'name': 'coke', 'price': '1.20'}
+        ]
+        expected = False
+
+        #When
+        actual = patch_value_from_key(
+            source=dtn, patch='invalid_key', to='1.50', where='id', equals='0')
+
+        #Then
+        self.assertEquals(expected, actual)
+               
+             
 if __name__ == '__main__':
     unittest.main()

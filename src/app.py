@@ -3,8 +3,6 @@ from .cli import clear, dicts_to_table, fmt_string, get_validated_input, list_to
 from .file_system import load_csv_to_dict, load_json, load_list, save_json, save_list, log, save_dict_to_csv
 
 # region := Utils
-
-
 def sort_orders_by_status():
     orders = get_external_data('orders')
     for i in range(len(orders)):
@@ -93,7 +91,7 @@ def get_value_from_key(*, source: list[Any], get: Hashable, where: Hashable, equ
 
 def patch_value_from_key(*, source, patch, to, where, equals) -> Any:
     for dtn in source:
-        if dtn[where] == equals:
+        if dtn[where] == equals and patch in dtn.keys():
             dtn[patch] = to
             return dtn
 
@@ -120,7 +118,7 @@ def update_item_in_list(item: dict[Any, Any], data: list[dict[Any, Any]]) -> Uni
     return False
 
 
-def delete_item_in_list(id: str, data: list[dict[Any, Any]]) -> Union[list[dict[Any, Any]], bool]:
+def delete_item_in_list(id: Union[int, str], data: list[dict[Any, Any]]) -> Union[list[dict[Any, Any]], bool]:
     for i in range(len(data) - 1, 0, -1):
         if data[i]['id'] == id:
             del data[i]
@@ -519,14 +517,52 @@ def show_update_order_menu() -> None:
         dicts_to_table(data)
 
         if successful:
-            if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
+            if input(fmt_string('Item SuccessFully Updated. Would You Like To Update Another?[y/n]\n', fg='Green')) == 'n':
+                is_looping = False
+
+
+def show_delete_order_menu() -> None:
+    data = get_external_data('orders')
+    items = data[0].items()
+    current_ids = [item['id'] for item in data]
+
+    is_looping = True
+    while is_looping:
+        clear()
+        dicts_to_table(data)
+
+        id = get_validated_input('Please Enter An ID To Delete: ', int,
+                                 fg='Blue', min_length=1, is_present=current_ids, cancel_on='0')
+
+        if not id:
+            return
+        
+        successful = delete_item_in_list(id, data)
+        
+        clear()
+        sort_orders_by_status()
+        dicts_to_table(data)
+        
+        if successful:
+            if input(fmt_string('Item SuccessFully Updated. Would You Like To Update Another?[y/n]\n', fg='Green')) == 'n':
                 is_looping = False
 # endregion := View
 
 
 # region := TODO
-def show_delete_order_menu() -> None:
-    not_implemented()
+def get_items_from_menu() -> list[int]:
+    return []
+
+
+# TODO: Add Sort & Search To All Views
+
+
+# TODO: Add Update Index References On Deletion
+
+
+# TODO: Add Much More Unit Testing
+
+
 # endregion := TODO
 
 
@@ -599,7 +635,7 @@ menus = {
             show_add_order_menu,
             show_update_status_menu,
             show_update_order_menu,
-            not_implemented
+            show_delete_order_menu
         ]
     },
     'system_maintainance_menu': {
