@@ -79,7 +79,7 @@ def save_json(filename: str, dtn: dict[Any, Any]):
 
 
 def load_csv_to_dict(filename: str) -> list[Any]:
-    
+    exclude_from_type_cast = ['phone']
     temp = []
     
     with open(get_absolute_path(filename)) as file:
@@ -90,7 +90,10 @@ def load_csv_to_dict(filename: str) -> list[Any]:
             
             # Try To Define Type Of Value
             for key, value in row.items():
-                if value and '[' in value and ']' in value:
+                if key in exclude_from_type_cast:
+                    dtn[key] = value
+                    
+                elif value and '[' in value and ']' in value:
                     list_object = []
                     list_items_right = value.split('[')
                     list_items_left = list_items_right[1].split(']')
@@ -109,6 +112,7 @@ def load_csv_to_dict(filename: str) -> list[Any]:
 
 
 def generate_type(value) -> Any:
+    
     if value and '.' in value:
         try:
             value = float(value)

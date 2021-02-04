@@ -17,6 +17,14 @@ def sort_orders_by_status():
                 orders[j], orders[j + 1] = orders[j + 1], orders[j]
 
 
+def sort_list_by_value(lst: str ='orders', key: str = 'id'):
+    orders = get_external_data(lst)
+    for i in range(len(orders)):
+        for j in range(len(orders) - 1):
+            if orders[j][key] > orders[j +1][key]:
+                orders[j], orders[j + 1] = orders[j + 1], orders[j]
+
+
 def not_implemented():
     input(fmt_string('TODO: Feature Not Yet Implemented', fg='White', bg='Red'))
 
@@ -67,6 +75,29 @@ def summerise_list(lst: list) -> list[str]:
     res = list(set(res))
     res.sort()
     return res
+
+
+def get_dict_by_key(*, source: list[Any], where: Hashable, equals: Any) -> Any:
+    for dtn in source:
+        if dtn[where] == equals:
+            return dtn
+    return False
+
+
+def get_value_from_key(*, source: list[Any], get: Hashable, where: Hashable, equals: Any) -> Any:
+    for dtn in source:
+        if dtn[where] == equals:
+            return dtn[get]
+    return False
+
+
+def patch_value_from_key(*, source, patch, to, where, equals) -> Any:
+    for dtn in source:
+        if dtn[where] == equals:
+            dtn[patch] = to
+            return dtn
+
+    return False
 # endregion := Utils
 
 
@@ -117,10 +148,9 @@ def show_menu(menu_name: str) -> None:
     menu_state = menu_name
     save_external_data(external_data)
     log('debug', f'Menu {menu_name} loaded')
-
     clear()
     print(fmt_string('Hi and Welcome to the F&B Ordering System.', fg='Blue'))
-
+    sort_orders_by_status()
     # Get the menu structure from the menus object, using it's items value to print to the screen
     menu = menus[menu_name]
     print_table(menu['title'], menu['items'])
@@ -137,13 +167,22 @@ def show_menu(menu_name: str) -> None:
 def print_data_view(key: str) -> None:
     data = get_external_data(key)
     current_ids = [item['id'] for item in data]
-    clear()
-    dicts_to_table(data)
     if key == 'orders':
-        index = get_validated_input(
-            'Please Select An Id To View: ', int, fg='Blue', cancel_on='0', is_present=current_ids)
-        show_order_detail_menu(index)
+        is_looping = True
+
+        while is_looping:
+            clear()
+            dicts_to_table(data)
+            index = get_validated_input(
+                'Please Select An Id To View: ', int, fg='Blue', cancel_on='0', is_present=current_ids)
+            if index == False:
+                is_looping = False
+                continue
+
+            show_order_detail_menu(index)
     else:
+        clear()
+        dicts_to_table(data)
         input(fmt_string('Press ENTER To Continue', fg='Green'))
 
 
@@ -177,8 +216,8 @@ def show_add_item_menu(key: str) -> None:
         successful = add_item_to_list(new_dict, data, 'name')
 
         clear()
-        dicts_to_table(data)
         sort_orders_by_status()
+        dicts_to_table(data)
 
         if successful:
             if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
@@ -286,32 +325,18 @@ def show_add_order_menu() -> None:
         clear()
         dicts_to_table(data)
         new_dict = {}
-        id = int(data[-1]['id']) + 1
+        id = max([order['id'] for order in data]) + 1
+        
         new_dict['id'] = id
 
         for key, value in items:
             if key != 'id':
                 if key == 'courier':
                     new_value = -1
-                    # courier_ids = [str(courier['id'])
-                    #                for courier in get_external_data('couriers')]
-                    # clear()
-                    # dicts_to_table(get_external_data('couriers'))
-
-                    # new_value = get_validated_input(
-                    #     f'Please Select {key.title()}: ', type(value), fg='Blue', is_present=courier_ids, cancel_on='0')
-
+                    
                 elif key == 'status':
                     new_value = 'pending'
-                    # status_list = list(order_status.keys())
-
-                    # clear()
-                    # list_to_table(status_list, 'Status List', enumerate=True)
-
-                    # new_value = status_list[get_validated_input(
-                    #     f'Please Select {key.title()}: ', int, fg='Blue',
-                    #     min_length=0, max_value=len(status_list),min_value=1, cancel_on='0') - 1]
-
+                    
                 elif key == 'items':
                     new_value = []
 
@@ -327,7 +352,7 @@ def show_add_order_menu() -> None:
             # Random crap to show order as it's being built
             clear()
             dicts_to_table(data)
-            print('Creating New Order...\n')
+            print(fmt_string('Creating New Order...\n', fg='Cyan'))
             for k, v in new_dict.items():
                 print(fmt_string(k.title(), fg='Cyan'), ': ',
                       fmt_string(str(v).title(), fg='White'))
@@ -344,16 +369,6 @@ def show_add_order_menu() -> None:
                 is_looping = False
 
 
-def get_value_from_key(*, source, get, where, equals) -> Any:
-    for dtn in source:
-        if dtn[where] == equals:
-            return dtn[get]
-    return False
-
-# endregion := View
-
-
-# region := TODO
 def show_order_detail_menu(order_id: int) -> None:
     clear()
     orders = get_external_data('orders')
@@ -363,15 +378,13 @@ def show_order_detail_menu(order_id: int) -> None:
     for order in orders:
         if order['id'] == order_id:
             for key, value in order.items():
-                if key != 'items' and key != 'courier':
-                    print(fmt_string(f'{key.title()}: ',
-                                     fg='Blue'), str(value).title(), '\n')
-                elif key == 'courier':
+                if key == 'courier':
                     if value != -1:
                         courier_name = get_value_from_key(
-                            source=couriers, get='name', where='id', equals=value)
+                            source=couriers, get='name', where='id', equals=value).title()
                     else:
-                        courier_name = 'unassigned'
+                        courier_name = fmt_string(
+                            'Unassigned', fg='White', bg='Red')
 
                     print(fmt_string(f'{key.title()}: ',
                                      fg='Blue'), courier_name, '\n')
@@ -383,22 +396,137 @@ def show_order_detail_menu(order_id: int) -> None:
                             source=products, get='name', where='id', equals=item)
                         items_list.append(item_name)
 
-                    list_to_table(summerise_list(items_list), 'Current Order')
+                    if len(items_list) > 0:
+                        list_to_table(summerise_list(items_list), 'Current Order')
 
-    input()
+                    else:
+                        print(fmt_string(f'{key.title()}: ',
+                                         fg='Blue'), 'None')
+                        
+                elif key == 'status':
+                    print(fmt_string(f'{key.title()}: ',
+                                     fg='Blue'), fmt_string(value.title(), fg=order_status[value]), '\n')
+                else:
+                    print(fmt_string(f'{key.title()}: ',
+                                     fg='Blue'), str(value).title(), '\n')
+
+    input(fmt_string('Press ENTER To Continue', fg='Green'))
 
 
 def show_update_status_menu() -> None:
-    not_implemented()
+    data = get_external_data('orders')
+    current_ids = [order['id'] for order in data]
+    is_looping = True
+    while is_looping:
+        clear()
+        dicts_to_table(data)
+        index = get_validated_input(
+            'Please Select An Id To Update: ', int, fg='Blue', cancel_on='0', is_present=current_ids)
+
+        status_list = list(order_status.keys())
+        current_status = get_value_from_key(
+            source=data, get='status', where='id', equals=index)
+
+        clear()
+        list_to_table(status_list, 'Status List', enumerate=True)
+
+        new_value = status_list[get_validated_input(
+            f'Please Select A New Status {fmt_string(f"[{current_status.title()}]", fg=order_status[current_status])}: ', int, fg='Blue',
+            min_length=0, max_value=len(status_list), min_value=1, cancel_on='0') - 1]
+
+        patch_value_from_key(source=data, patch='status',
+                             to=new_value, where='id', equals=index)
+
+        clear()
+        sort_orders_by_status()
+        dicts_to_table(data)
+
+        if input(fmt_string('Status SuccessFully Updated. Would You Like To Update Another?[y/n]\n', fg='Green')) == 'n':
+            is_looping = False
+            continue
 
 
 def show_update_order_menu() -> None:
-    not_implemented()
+    data = get_external_data('orders')
+    items = data[0].items()
+    current_ids = [item['id'] for item in data]
+
+    is_looping = True
+    while is_looping:
+        clear()
+        dicts_to_table(data)
+
+        new_dict = {}
+        id = get_validated_input('Please Enter An ID To Edit: ', int,
+                                 fg='Blue', min_length=1, is_present=current_ids, cancel_on='0')
+
+        if not id:
+            return
+
+        clear()
+        dtn = get_dict_by_key(source=data, where='id', equals=id)
+        dicts_to_table([dtn])
+
+        new_dict['id'] = id
+
+        for key, value in items:
+            if key != 'id':
+                if key == 'items':
+                    pass
+
+                elif key == 'status':
+                    status_list = list(order_status.keys())
+
+                    clear()
+                    list_to_table(status_list, 'Status List', enumerate=True)
+
+                    value = status_list[get_validated_input(
+                        f'Please Select {key.title()}: ', int, fg='Blue',
+                        min_length=0, max_value=len(status_list), min_value=1, cancel_on='0', cancel_text='SKIP') - 1]
+
+                    if not value:
+                        value = get_value_from_key(
+                            source=data, get=key, where='id', equals=id)
+
+                elif key == 'courier':
+                    courier_ids = [courier['id']
+                                   for courier in get_external_data('couriers')]
+
+                    clear()
+                    dicts_to_table(get_external_data('couriers'))
+
+                    value = get_validated_input(
+                        f'Please Select {key.title()}: ', type(value), fg='Blue', is_present=courier_ids, cancel_on='0', cancel_text='SKIP')
+
+                    if not value:
+                        value = get_value_from_key(
+                            source=data, get=key, where='id', equals=id)
+
+                else:
+                    value = get_validated_input(
+                        f'Please Enter New {key.title()}: ', type(value), fg='Blue', min_length=0, cancel_on='', cancel_text='SKIP')
+
+                    if not value:
+                        value = get_value_from_key(
+                            source=data, get=key, where='id', equals=id)
+
+                new_dict[key] = value
+
+        successful = update_item_in_list(new_dict, data)
+
+        clear()
+        sort_orders_by_status()
+        dicts_to_table(data)
+
+        if successful:
+            if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
+                is_looping = False
+# endregion := View
 
 
+# region := TODO
 def show_delete_order_menu() -> None:
     not_implemented()
-
 # endregion := TODO
 
 
@@ -468,10 +596,9 @@ menus = {
         'handlers': [
             lambda: show_menu('main_menu'),
             lambda: print_data_view('orders'),
-            lambda: show_add_order_menu(),
-            not_implemented,
-            not_implemented,
-            not_implemented,
+            show_add_order_menu,
+            show_update_status_menu,
+            show_update_order_menu,
             not_implemented
         ]
     },

@@ -24,11 +24,12 @@ order_status = {
     'delivered': 'White',
 }
 
+
 def fmt_string(msg: str, fg: str = 'White', bg: str = 'Unset') -> str:
     return f'\u001b[{colors[fg]};1m\u001b[{colors[bg]+10};1m{msg}\u001b[0m'
 
 
-def print_palette(col: str ='All') -> None:
+def print_palette(col: str = 'All') -> None:
 
     if col == 'All':
         for fg_col in colors:
@@ -97,11 +98,19 @@ def validated_input(prompt: str, *types, input=input, **options) -> tuple[int, A
     cancel_text = ''
 
     if 'cancel_on' in options:
+        if options['cancel_on'] == '':
+            options['cancel_on'] = 'BLANK'
+
+    if 'cancel_on' in options and 'cancel_text' in options:
+        cancel_text = fmt_string(
+            f'({options["cancel_on"]} To {options["cancel_text"].title()})\n', fg='White')
+
+    elif 'cancel_on' in options:
         cancel_text = fmt_string(
             f'({options["cancel_on"]} To Cancel)\n', fg='White')
 
     prompt += cancel_text
-    
+
     if 'fg' in options:
         value = str(
             input(fmt_string(prompt, fg=options['fg']))).lower()
@@ -119,7 +128,7 @@ def validated_input(prompt: str, *types, input=input, **options) -> tuple[int, A
     if 'cancel_on' in options:
         if value == options['cancel_on']:
             return -1, 'Operation Cancelled'
-        
+
     if float in types:
         try:
             value = float(value)
@@ -160,7 +169,6 @@ def validated_input(prompt: str, *types, input=input, **options) -> tuple[int, A
         if value not in options['is_present']:
             return 0, fmt_string(f'Input value {value} can not be found in object', fg='White', bg='Red')
 
-
     if 'min_length' in options:
         if len(str(value)) < options['min_length']:
             return 0, fmt_string(f'Length of input [{len(str(value))}] is less than the minimum length [{options["min_length"]}]', fg='White', bg='Red')
@@ -168,7 +176,6 @@ def validated_input(prompt: str, *types, input=input, **options) -> tuple[int, A
     if 'max_length' in options:
         if len(str(value)) > options['max_length']:
             return 0, fmt_string(f'Length of input [{len(str(value))}] is greater than the maximum length [{options["max_length"]}]', fg='White', bg='Red')
-
 
     return 1, value
 
@@ -188,7 +195,7 @@ def get_validated_input(prompt: str, *types, input=input, **options) -> Any:
     return value
 
 
-def dicts_to_table(dicts: list[dict[str, Any]], headers: list = [], enumerated=False) -> None:
+def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=False) -> None:
     table_data = []
     show_headers = []
     if enumerated:
