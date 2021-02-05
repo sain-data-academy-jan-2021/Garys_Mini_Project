@@ -6,8 +6,7 @@ from .app import (
     search_items_in_list, summerise_list,
     update_item_in_list,
     delete_item_in_list,
-    get_external_data,
-    sort_orders_by_status
+    get_external_data
     )
 
 
@@ -216,10 +215,10 @@ class TestGetDictByKey(unittest.TestCase):
         
         #When / Then
         self.assertRaises(KeyError, lambda: get_dict_by_key(
-            source=dtn, where='invalid', equals='vodka'))
+            source=dtn, where='invalid_key', equals='vodka'))
         
         
-class TestGetValueFromBy(unittest.TestCase):
+class TestGetValueFromKey(unittest.TestCase):
 
     def test_should_return_correct_value(self):
         #Given
@@ -265,7 +264,7 @@ class TestGetValueFromBy(unittest.TestCase):
 
         #When / Then
         self.assertRaises(KeyError, lambda: get_value_from_key(
-            source=dtn, get='invalid', where='name', equals='pepsi'))
+            source=dtn, get='invalid_key', where='name', equals='pepsi'))
 
 
 class TestPatchValueFromKey(unittest.TestCase):

@@ -16,6 +16,10 @@ def sort_orders_by_status():
 
 
 def sort_list_by_value(lst: str ='orders', key: str = 'id'):
+    if key == 'status':
+        sort_orders_by_status
+        return
+    
     orders = get_external_data(lst)
     for i in range(len(orders)):
         for j in range(len(orders) - 1):
@@ -149,6 +153,7 @@ def show_menu(menu_name: str) -> None:
     clear()
     print(fmt_string('Hi and Welcome to the F&B Ordering System.', fg='Blue'))
     sort_orders_by_status()
+    
     # Get the menu structure from the menus object, using it's items value to print to the screen
     menu = menus[menu_name]
     print_table(menu['title'], menu['items'])
@@ -164,29 +169,57 @@ def show_menu(menu_name: str) -> None:
 
 def print_data_view(key: str) -> None:
     data = get_external_data(key)
-    current_ids = [item['id'] for item in data]
+    # Get a list of the current IDs to ensure the user selects one that actually exists -> passed to is_present
+    current_ids = [-1] + [item['id'] for item in data]
     if key == 'orders':
         is_looping = True
 
         while is_looping:
             clear()
-            dicts_to_table(data)
+            dicts_to_table(data, paginate=True)
             index = get_validated_input(
-                'Please Select An Id To View: ', int, fg='Blue', cancel_on='0', is_present=current_ids)
+                'Please Select An Id To View (-1 To Sort): ', int, fg='Blue', cancel_on='0', is_present=current_ids)
+            if index == False:
+                is_looping = False
+                continue
+            
+            if index == -1:
+                clear()
+                dicts_to_table(data, paginate=True)
+                sort_on_keys = [key for key in data[0]]
+                list_to_table(sort_on_keys,'Available Sorts', enumerate=True)
+                sort_key = get_validated_input('How Would You Like To Sort By [id]? ', int, fg='Blue', min_value=1, max_value=len(sort_on_keys), cancel_on=0)
+                sort_list_by_value(key, sort_on_keys[sort_key - 1])
+                continue
+            
+            show_order_detail_menu(index)
+    else:
+        is_looping = True
+        while is_looping:
+            clear()
+            dicts_to_table(data, paginate=True)
+            index = get_validated_input(
+                'Please Select 1 To Sort: ', int, fg='Blue', cancel_on=0, is_present=[1])
+            
             if index == False:
                 is_looping = False
                 continue
 
-            show_order_detail_menu(index)
-    else:
-        clear()
-        dicts_to_table(data)
-        input(fmt_string('Press ENTER To Continue', fg='Green'))
+            if index == 1:
+                clear()
+                sort_on_keys = [key for key in data[0]]
+                list_to_table(sort_on_keys, 'Available Sorts', enumerate=True)
+                sort_key = get_validated_input(
+                    'How Would You Like To Sort By [id]? ', int, fg='Blue', min_value=1, max_value=len(sort_on_keys), cancel_on=0)
+                sort_list_by_value(key, sort_on_keys[sort_key - 1])
+                continue
 
 
 def show_add_item_menu(key: str) -> None:
     data = get_external_data(key)
+    # Use the first element in the list to establish the key structure of the data
     items = data[0].items()
+    # Get a list of current names to ensure that no duplicates are passed -> passed to unique
     current_names = [item['name'] for item in data]
 
     is_looping = True
@@ -194,7 +227,7 @@ def show_add_item_menu(key: str) -> None:
         clear()
         dicts_to_table(data)
         new_dict = {}
-        id = int(data[-1]['id']) + 1
+        id = max([item['id'] for item in data]) + 1
         new_dict['id'] = id
 
         for key, value in items:
@@ -336,7 +369,7 @@ def show_add_order_menu() -> None:
                     new_value = 'pending'
                     
                 elif key == 'items':
-                    new_value = []
+                    new_value = select_order_items()
 
                 else:
                     new_value = get_validated_input(
@@ -421,6 +454,10 @@ def show_update_status_menu() -> None:
         index = get_validated_input(
             'Please Select An Id To Update: ', int, fg='Blue', cancel_on='0', is_present=current_ids)
 
+        if not index:
+            is_looping = False
+            continue
+        
         status_list = list(order_status.keys())
         current_status = get_value_from_key(
             source=data, get='status', where='id', equals=index)
@@ -470,7 +507,7 @@ def show_update_order_menu() -> None:
         for key, value in items:
             if key != 'id':
                 if key == 'items':
-                    pass
+                    value = select_order_items()
 
                 elif key == 'status':
                     status_list = list(order_status.keys())
@@ -523,7 +560,6 @@ def show_update_order_menu() -> None:
 
 def show_delete_order_menu() -> None:
     data = get_external_data('orders')
-    items = data[0].items()
     current_ids = [item['id'] for item in data]
 
     is_looping = True
@@ -546,23 +582,56 @@ def show_delete_order_menu() -> None:
         if successful:
             if input(fmt_string('Item SuccessFully Updated. Would You Like To Update Another?[y/n]\n', fg='Green')) == 'n':
                 is_looping = False
+
+
+def select_order_items() -> list[int]:
+    # While -> Print / Select Catagorys
+    result = []
+    cat_map = get_external_data('catagory_mapping')
+    is_in_menu = True
+    while is_in_menu:
+        clear()
+        menus = [item for item in cat_map]
+        list_to_table(menus, 'Catagories', enumerate=True)
+        option = get_validated_input(
+            'Please Select A Catagory: ', int, fg='Blue', min_length=1, max_value=len(menus), cancel_on=0)
+
+        if not option:
+            is_in_menu = False
+            continue
+
+        is_in_cat = True
+        while is_in_cat:
+            clear()
+            sub_menu = menus[option - 1]
+            indexs = cat_map[sub_menu]
+            products_list = get_external_data('products')
+
+            items = [get_value_from_key(
+                source=products_list, get='name', where='id', equals=index) for index in indexs]
+            list_to_table(items, sub_menu.title(), enumerate=True)
+
+            cat_option = get_validated_input(
+                'Please Select A Item: ', int, fg='Blue', min_length=1, max_value=len(items), cancel_on=0)
+
+            if not cat_option:
+                is_in_cat = False
+                continue
+
+            item_index = get_value_from_key(
+                source=products_list, get='id', where='name', equals=items[cat_option - 1])
+
+            result.append(item_index)
+
+    return result
 # endregion := View
 
 
 # region := TODO
-def get_items_from_menu() -> list[int]:
-    return []
+# TODO: Add More Unit Testing
 
 
-# TODO: Add Sort & Search To All Views
-
-
-# TODO: Add Update Index References On Deletion
-
-
-# TODO: Add Much More Unit Testing
-
-
+# TODO: Look At Data Manager Class And Orders/Couriers/Products Classes
 # endregion := TODO
 
 
@@ -658,5 +727,4 @@ if __name__ == '__main__':
     while menu_state:
         show_menu(menu_state)
         save_external_data(external_data)
-
 # endregion :=Setup
