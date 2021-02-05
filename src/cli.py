@@ -195,7 +195,7 @@ def get_validated_input(prompt: str, *types, input=input, **options) -> Any:
     return value
 
 
-def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=False) -> None:
+def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=False, paginate=False) -> None:
     table_data = []
     show_headers = []
     if enumerated:
@@ -230,8 +230,45 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
 
             table_data.append(row)
 
-    table = SingleTable(table_data)
-    print(table.table)
+    is_looping = True
+    total_records = len(table_data)
+    page_length = 20
+    current_page = 0
+    total_pages = ceil(int(total_records / page_length))
+
+    if paginate and total_pages > 0:
+        while is_looping:
+            clear()
+            to = (current_page * page_length + page_length + 1) if (current_page *
+                                                                    page_length + page_length + 1) < total_records else total_records
+            page_slice = []
+            page_slice.append(table_data[0])
+            page_slice += table_data[current_page *
+                                    page_length + 1:to]
+            table = SingleTable(page_slice)
+
+            table_width = table.table_width
+            fixed_text_width = 40
+            width_to_fill = table_width - fixed_text_width
+
+            print(table.table)
+            print(fmt_string(
+                f'Showing Records {current_page * page_length + 1}-{to} Of {total_records}{" " * width_to_fill} Page {current_page+1} of {total_pages + 1}  ', bg='Blue', fg='White'))
+            
+            option = input('[+/-] For Next/Previous Page\n').lower()
+            
+            if option in ['', '+', '-']:
+                if option == '':
+                    is_looping = False
+                elif option == '+':
+                    if current_page < total_pages:
+                        current_page += 1
+                elif option == '-':
+                    if current_page > 0:
+                        current_page -= 1
+    else:
+        table = SingleTable(table_data)
+        print(table.table)
 
 
 def list_to_table(lst: list[str], title: str, **options) -> None:
@@ -261,7 +298,6 @@ def list_to_table(lst: list[str], title: str, **options) -> None:
 
     # for i, item in enumerate(lst):
     #     table_data.append([i+1, item])
-
     table = SingleTable(table_data, title.upper())
     table.inner_heading_row_border = False
     print(table.table)
