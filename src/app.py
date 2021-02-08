@@ -13,18 +13,19 @@ def sort_orders_by_status():
                 orders[j + 1]['status'])
             if status_index1 > status_index2:
                 orders[j], orders[j + 1] = orders[j + 1], orders[j]
+    return orders
 
 
-def sort_list_by_value(lst: str ='orders', key: str = 'id'):
+def sort_list_by_value(lst: str ='orders', key: str ='id'):
     if key == 'status':
-        sort_orders_by_status
-        return
+        return sort_orders_by_status()
     
     orders = get_external_data(lst)
     for i in range(len(orders)):
         for j in range(len(orders) - 1):
             if orders[j][key] > orders[j +1][key]:
                 orders[j], orders[j + 1] = orders[j + 1], orders[j]
+    return orders
 
 
 def not_implemented():
@@ -43,7 +44,7 @@ def load_external_data(data: dict[str, Any]) -> None:
                 elif data_source['type'] == 'csv':
                     data_source['data'] = load_csv_to_dict(
                         data_source['location'])
-
+                
 
 def save_external_data(data: dict[str, Any]) -> None:
     for data_source in data.values():
@@ -596,7 +597,7 @@ def select_order_items() -> list[int]:
         option = get_validated_input(
             'Please Select A Catagory: ', int, fg='Blue', min_length=1, max_value=len(menus), cancel_on=0)
 
-        if not option:
+        if option == '0':
             is_in_menu = False
             continue
 

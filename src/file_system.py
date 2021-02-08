@@ -106,8 +106,7 @@ def load_csv_to_dict(filename: str) -> list[Any]:
                 else:
                     dtn[key] = generate_type(value)    
                     
-            temp.append(dtn)
-            
+            temp.append(dtn) 
     return temp
 
 

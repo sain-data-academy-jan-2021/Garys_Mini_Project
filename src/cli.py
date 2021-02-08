@@ -94,7 +94,7 @@ def clear() -> None:
     os.system('clear')
 
 
-def validated_input(prompt: str, *types, input=input, **options) -> tuple[int, Any]:
+def validated_input(prompt: str, *types, **options) -> tuple[int, Any]:
     cancel_text = ''
 
     if 'cancel_on' in options:
@@ -180,7 +180,7 @@ def validated_input(prompt: str, *types, input=input, **options) -> tuple[int, A
     return 1, value
 
 
-def get_validated_input(prompt: str, *types, input=input, **options) -> Any:
+def get_validated_input(prompt: str, *types, **options) -> Any:
     # Wrapper For validated_input to allow looping until valid
     res, value = validated_input(prompt, *types, **options)
 
@@ -189,8 +189,7 @@ def get_validated_input(prompt: str, *types, input=input, **options) -> Any:
         if res == -1:
             return False
 
-        input(value)
-        res, value = validated_input(prompt, *types, input=input, **options)
+        res, value = validated_input(prompt, *types, **options)
 
     return value
 
