@@ -183,14 +183,18 @@ def validated_input(prompt: str, *types, **options) -> tuple[int, Any]:
 def get_validated_input(prompt: str, *types, **options) -> Any:
     # Wrapper For validated_input to allow looping until valid
     res, value = validated_input(prompt, *types, **options)
-
+    
+    if res == -1:
+        return False
+    
     while res != 1:
-
-        if res == -1:
-            return False
+        print(value)
 
         res, value = validated_input(prompt, *types, **options)
-
+        
+        if res == -1:
+            return False
+        
     return value
 
 

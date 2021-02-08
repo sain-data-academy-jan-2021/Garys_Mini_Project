@@ -56,6 +56,7 @@ class TestGetValidatedInput(unittest.TestCase):
 
 
     @patch('src.cli.input')
+    @patch('builtins.print', lambda x: None)
     def test_should_loop_until_valid_input(self, mock_input):
         #Given
         mock_input.side_effect = ['string1','string2', '1.99']

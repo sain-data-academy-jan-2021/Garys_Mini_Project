@@ -124,7 +124,7 @@ def update_item_in_list(item: dict[Any, Any], data: list[dict[Any, Any]]) -> Uni
 
 
 def delete_item_in_list(id: Union[int, str], data: list[dict[Any, Any]]) -> Union[list[dict[Any, Any]], bool]:
-    for i in range(len(data) - 1, 0, -1):
+    for i in range(len(data) - 1, -1, -1):
         if data[i]['id'] == id:
             del data[i]
             return data
@@ -200,7 +200,7 @@ def print_data_view(key: str) -> None:
             clear()
             dicts_to_table(data, paginate=True)
             index = get_validated_input(
-                'Please Select 1 To Sort: ', int, fg='Blue', cancel_on=0, is_present=[1])
+                'Please Select 1 To Sort: ', int, fg='Blue', cancel_on='0', is_present=[1])
             
             if index == False:
                 is_looping = False
@@ -466,9 +466,15 @@ def show_update_status_menu() -> None:
         clear()
         list_to_table(status_list, 'Status List', enumerate=True)
 
-        new_value = status_list[get_validated_input(
+        status_index = get_validated_input(
             f'Please Select A New Status {fmt_string(f"[{current_status.title()}]", fg=order_status[current_status])}: ', int, fg='Blue',
-            min_length=0, max_value=len(status_list), min_value=1, cancel_on='0') - 1]
+            min_length=0, max_value=len(status_list), min_value=1, cancel_on='0')
+        
+        if not status_index:
+            continue
+        
+        new_value = status_list[status_index - 1]
+        
 
         patch_value_from_key(source=data, patch='status',
                              to=new_value, where='id', equals=index)
@@ -508,7 +514,8 @@ def show_update_order_menu() -> None:
         for key, value in items:
             if key != 'id':
                 if key == 'items':
-                    value = select_order_items()
+                    value = select_order_items(get_value_from_key(
+                        source=data, get=key, where='id', equals=id))
 
                 elif key == 'status':
                     status_list = list(order_status.keys())
@@ -516,11 +523,13 @@ def show_update_order_menu() -> None:
                     clear()
                     list_to_table(status_list, 'Status List', enumerate=True)
 
-                    value = status_list[get_validated_input(
+                    status_index = get_validated_input(
                         f'Please Select {key.title()}: ', int, fg='Blue',
-                        min_length=0, max_value=len(status_list), min_value=1, cancel_on='0', cancel_text='SKIP') - 1]
+                        min_length=0, max_value=len(status_list), min_value=1, cancel_on='0', cancel_text='SKIP')
+                    
+                    value = status_list[status_index - 1]
 
-                    if not value:
+                    if not status_index:
                         value = get_value_from_key(
                             source=data, get=key, where='id', equals=id)
 
@@ -575,7 +584,6 @@ def show_delete_order_menu() -> None:
             return
         
         successful = delete_item_in_list(id, data)
-        
         clear()
         sort_orders_by_status()
         dicts_to_table(data)
@@ -585,7 +593,7 @@ def show_delete_order_menu() -> None:
                 is_looping = False
 
 
-def select_order_items() -> list[int]:
+def select_order_items(current_items: list[int] =[]) -> list[int]:
     # While -> Print / Select Catagorys
     result = []
     cat_map = get_external_data('catagory_mapping')
@@ -597,7 +605,7 @@ def select_order_items() -> list[int]:
         option = get_validated_input(
             'Please Select A Catagory: ', int, fg='Blue', min_length=1, max_value=len(menus), cancel_on=0)
 
-        if option == '0':
+        if not option:
             is_in_menu = False
             continue
 
@@ -624,15 +632,12 @@ def select_order_items() -> list[int]:
 
             result.append(item_index)
 
-    return result
+    return result + current_items
 # endregion := View
 
 
 # region := TODO
-# TODO: Add More Unit Testing
 
-
-# TODO: Look At Data Manager Class And Orders/Couriers/Products Classes
 # endregion := TODO
 
 
