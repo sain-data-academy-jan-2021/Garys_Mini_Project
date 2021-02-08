@@ -344,7 +344,7 @@ class TestLoadExternalData(unittest.TestCase):
         config = {"test":
                   {"name": "test",
                    "data": [],
-                   "location": "./data/test_txt_data.txt"}
+                   "location": "./data/tests/test_txt_data.txt"}
                   }
         expected = ['Some', 'Test', 'Data', 'In', 'A', 'File']
 
@@ -360,7 +360,7 @@ class TestLoadExternalData(unittest.TestCase):
         config = {"test":
                   {"name": "test",
                    "data": [],
-                   "location": "./data/test_csv_data.csv",
+                   "location": "./data/tests/test_csv_data.csv",
                    'type': 'csv'}
                   }
         expected = [
@@ -380,7 +380,7 @@ class TestLoadExternalData(unittest.TestCase):
         config = {"test":
                   {"name": "test",
                    "data": [],
-                   "location": "./data/test_json_data.json",
+                   "location": "./data/tests/test_json_data.json",
                    'type': 'json'}
                   }
         expected = [
@@ -401,14 +401,14 @@ class TestLoadExternalData(unittest.TestCase):
         config = {"test":
                   {"name": "test",
                    "data": [],
-                   "location": "./data/invalid.txt"}
+                   "location": "./data/tests/invalid.txt"}
                   }
 
         # When
         load_external_data(config)
         # Then
         mock_log.assert_called_with(
-            'error', "Failed to load data - [Errno 2] No such file or directory: '/Users/gary.spittel/Desktop/Bootcamp/Mini_Project/data/invalid.txt'")
+            'error', "Failed to load data - [Errno 2] No such file or directory: '/Users/gary.spittel/Desktop/Bootcamp/Mini_Project/data/tests/invalid.txt'")
 
 
 if __name__ == '__main__':
