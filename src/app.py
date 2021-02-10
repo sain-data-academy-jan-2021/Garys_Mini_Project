@@ -1,6 +1,12 @@
 from typing import Any, Hashable, Union
+import os
+from dotenv import load_dotenv
+
+from .DbController import DbController
 from .cli import clear, dicts_to_table, fmt_string, get_validated_input, list_to_table, print_palette, print_table, validated_input, order_status
 from .file_system import load_csv_to_dict, load_json, load_list, save_json, save_list, log, save_dict_to_csv
+load_dotenv()
+
 
 # region := Utils
 def sort_orders_by_status():
@@ -44,7 +50,28 @@ def load_external_data(data: dict[str, Any]) -> None:
                 elif data_source['type'] == 'csv':
                     data_source['data'] = load_csv_to_dict(
                         data_source['location'])
-                
+        elif data_source['type'] == 'db':
+            host = os.environ.get("mysql_host")
+            user = os.environ.get("mysql_user")
+            password = os.environ.get("mysql_pass")
+            database = os.environ.get("mysql_db")
+            data_source['connector'] = DbController(host, user, password, database) # type:ignore
+            data_source['data'] = data_source['connector'].get_rows(data_source['name'])
+        
+
+def refresh_connections():
+    global external_data
+    for data_source in external_data:
+        source = external_data[data_source]
+        if source['type'] == 'db':
+            source['data'] = source['connector'].get_rows(source['name'])
+
+
+def close_connections():
+    for data_source in external_data:
+        if data_source['type'] == 'db':
+            data_source['connector'].close()
+
 
 def save_external_data(data: dict[str, Any]) -> None:
     for data_source in data.values():
@@ -216,8 +243,8 @@ def print_data_view(key: str) -> None:
                 continue
 
 
-def show_add_item_menu(key: str) -> None:
-    data = get_external_data(key)
+def show_add_item_menu(get_key: str) -> None:
+    data = get_external_data(get_key)
     # Use the first element in the list to establish the key structure of the data
     items = data[0].items()
     # Get a list of current names to ensure that no duplicates are passed -> passed to unique
@@ -235,10 +262,10 @@ def show_add_item_menu(key: str) -> None:
             if key != 'id' and key != 'items':
                 if key == 'name':
                     value = get_validated_input(
-                        f'Please Enter {key.title()}: ', type(value), fg='Blue', min_length=1, unique=current_names, cancel_on='0')
+                        f'Please Enter {key.replace("_"," ").title()}: ', type(value), fg='Blue', min_length=1, unique=current_names, cancel_on='0')
                 else:
                     value = get_validated_input(
-                        f'Please Enter {key.title()}: ', type(value), fg='Blue', min_length=1, cancel_on='0')
+                        f'Please Enter {key.replace("_"," ").title()}: ', type(value), fg='Blue', min_length=1, cancel_on='0')
 
                 if not value:
                     return
@@ -246,6 +273,9 @@ def show_add_item_menu(key: str) -> None:
                 new_dict[key] = value
 
         successful = add_item_to_list(new_dict, data, 'name')
+        if get_external_data(get_key, 'type') == 'db':
+            get_external_data(get_key, 'connector').insert(get_key, new_dict)
+            refresh_connections()
 
         clear()
         sort_orders_by_status()
@@ -638,6 +668,12 @@ def select_order_items(current_items: list[int] =[]) -> list[int]:
 
 # region := TODO
 
+# TODO: Add connections to update, and delete views
+
+# TODO: migrate orders to db
+
+# TODO: figure out how to build join query
+
 # endregion := TODO
 
 
@@ -733,4 +769,5 @@ if __name__ == '__main__':
     while menu_state:
         show_menu(menu_state)
         save_external_data(external_data)
+    close_connections()
 # endregion :=Setup

@@ -1,15 +1,15 @@
 {
     "products": {
         "name": "products",
-        "data": [],
-        "location": "./data/products.csv",
-        "type" : "csv"
+        "type" : "db",
+        "connector": null,
+        "data": []   
     },
     "couriers": {
         "name": "couriers",
-        "data": [],
-        "location": "./data/couriers.csv",
-        "type": "csv"
+        "type": "db",
+        "connector": null,
+        "data": []
     },
     "orders": {
         "name": "orders",
