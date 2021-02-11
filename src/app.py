@@ -52,11 +52,14 @@ def load_external_data(data: dict[str, Any]) -> None:
             user = os.environ.get("mysql_user")
             password = os.environ.get("mysql_pass")
             database = os.environ.get("mysql_db")
+            
+            data_source['connector'] = DbController(
+                host, user, password, database)  # type:ignore  
+            print(data_source['connector'])
+            data_source['data'] = data_source['connector'].get_all_rows(
+                    data_source['name'])
             try:
-                data_source['connector'] = DbController(
-                    host, user, password, database)  # type:ignore  
-                data_source['data'] = data_source['connector'].get_all_rows(
-                        data_source['name'])
+                pass
             except:
                 pass
 
