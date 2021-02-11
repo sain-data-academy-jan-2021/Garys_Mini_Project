@@ -22,14 +22,14 @@ def sort_orders_by_status():
     return orders
 
 
-def sort_list_by_value(lst: str ='orders', key: str ='id'):
+def sort_list_by_value(lst: str = 'orders', key: str = 'id'):
     if key == 'status':
         return sort_orders_by_status()
-    
+
     orders = get_external_data(lst)
     for i in range(len(orders)):
         for j in range(len(orders) - 1):
-            if orders[j][key] > orders[j +1][key]:
+            if orders[j][key] > orders[j + 1][key]:
                 orders[j], orders[j + 1] = orders[j + 1], orders[j]
     return orders
 
@@ -55,16 +55,28 @@ def load_external_data(data: dict[str, Any]) -> None:
             user = os.environ.get("mysql_user")
             password = os.environ.get("mysql_pass")
             database = os.environ.get("mysql_db")
-            data_source['connector'] = DbController(host, user, password, database) # type:ignore
-            data_source['data'] = data_source['connector'].get_rows(data_source['name'])
-        
+            try:
+                data_source['connector'] = DbController(
+                    host, user, password, database)  # type:ignore
+                if data_source['name'] == 'orders':
+                    data_source['data'] = data_source['connector'].get_join(
+                        fields=['o.id','o.name','o.address', 'o.area', 'o.phone', 'c.name'],
+                        source='orders o',
+                        target='couriers c',
+                        condition='c.id = o.courier')
+                else:    
+                    data_source['data'] = data_source['connector'].get_all_rows(
+                        data_source['name'])
+            except:
+                pass
+
 
 def refresh_connections():
     global external_data
     for data_source in external_data:
         source = external_data[data_source]
         if source['type'] == 'db':
-            source['data'] = source['connector'].get_rows(source['name'])
+            source['data'] = source['connector'].get_all_rows(source['name'])
 
 
 def close_connections():
@@ -176,12 +188,12 @@ def show_menu(menu_name: str) -> None:
     # Set the global menu_state to the selected menu to allow us to backtrack when returning
     global menu_state
     menu_state = menu_name
-    save_external_data(external_data)
+    save_external_data(external_data) #type: ignore
     log('debug', f'Menu {menu_name} loaded')
     clear()
     print(fmt_string('Hi and Welcome to the F&B Ordering System.', fg='Blue'))
     sort_orders_by_status()
-    
+
     # Get the menu structure from the menus object, using it's items value to print to the screen
     menu = menus[menu_name]
     print_table(menu['title'], menu['items'])
@@ -210,16 +222,17 @@ def print_data_view(key: str) -> None:
             if index == False:
                 is_looping = False
                 continue
-            
+
             if index == -1:
                 clear()
                 dicts_to_table(data, paginate=True)
                 sort_on_keys = [key for key in data[0]]
-                list_to_table(sort_on_keys,'Available Sorts', enumerate=True)
-                sort_key = get_validated_input('How Would You Like To Sort By [id]? ', int, fg='Blue', min_value=1, max_value=len(sort_on_keys), cancel_on=0)
+                list_to_table(sort_on_keys, 'Available Sorts', enumerate=True)
+                sort_key = get_validated_input(
+                    'How Would You Like To Sort By [id]? ', int, fg='Blue', min_value=1, max_value=len(sort_on_keys), cancel_on=0)
                 sort_list_by_value(key, sort_on_keys[sort_key - 1])
                 continue
-            
+
             show_order_detail_menu(index)
     else:
         is_looping = True
@@ -228,7 +241,7 @@ def print_data_view(key: str) -> None:
             dicts_to_table(data, paginate=True)
             index = get_validated_input(
                 'Please Select 1 To Sort: ', int, fg='Blue', cancel_on='0', is_present=[1])
-            
+
             if index == False:
                 is_looping = False
                 continue
@@ -286,8 +299,8 @@ def show_add_item_menu(get_key: str) -> None:
                 is_looping = False
 
 
-def show_update_item_menu(key: str) -> None:
-    data = get_external_data(key)
+def show_update_item_menu(get_key: str) -> None:
+    data = get_external_data(get_key)
     items = data[0].items()
     current_ids = [item['id'] for item in data]
 
@@ -316,7 +329,10 @@ def show_update_item_menu(key: str) -> None:
                 new_dict[key] = value
 
         successful = update_item_in_list(new_dict, data)
-
+        if get_external_data(get_key, 'type') == 'db':
+            get_external_data(get_key, 'connector').update(
+                get_key, id, new_dict)
+            refresh_connections()
         clear()
         sort_orders_by_status()
         dicts_to_table(data)
@@ -326,8 +342,8 @@ def show_update_item_menu(key: str) -> None:
                 is_looping = False
 
 
-def show_delete_item_menu(key: str) -> None:
-    data = get_external_data(key)
+def show_delete_item_menu(get_key: str) -> None:
+    data = get_external_data(get_key)
     current_ids = [item['id'] for item in data]
 
     is_looping = True
@@ -341,6 +357,9 @@ def show_delete_item_menu(key: str) -> None:
             return
 
         successful = delete_item_in_list(item_id, data)
+        if get_external_data(get_key, 'type') == 'db':
+            get_external_data(get_key, 'connector').delete(get_key, item_id)
+            refresh_connections()
 
         clear()
         dicts_to_table(data)
@@ -388,17 +407,17 @@ def show_add_order_menu() -> None:
         dicts_to_table(data)
         new_dict = {}
         id = max([order['id'] for order in data]) + 1
-        
+
         new_dict['id'] = id
 
         for key, value in items:
             if key != 'id':
                 if key == 'courier':
                     new_value = -1
-                    
+
                 elif key == 'status':
                     new_value = 'pending'
-                    
+
                 elif key == 'items':
                     new_value = select_order_items()
 
@@ -459,12 +478,13 @@ def show_order_detail_menu(order_id: int) -> None:
                         items_list.append(item_name)
 
                     if len(items_list) > 0:
-                        list_to_table(summerise_list(items_list), 'Current Order')
+                        list_to_table(summerise_list(
+                            items_list), 'Current Order')
 
                     else:
                         print(fmt_string(f'{key.title()}: ',
                                          fg='Blue'), 'None')
-                        
+
                 elif key == 'status':
                     print(fmt_string(f'{key.title()}: ',
                                      fg='Blue'), fmt_string(value.title(), fg=order_status[value]), '\n')
@@ -488,7 +508,7 @@ def show_update_status_menu() -> None:
         if not index:
             is_looping = False
             continue
-        
+
         status_list = list(order_status.keys())
         current_status = get_value_from_key(
             source=data, get='status', where='id', equals=index)
@@ -499,12 +519,11 @@ def show_update_status_menu() -> None:
         status_index = get_validated_input(
             f'Please Select A New Status {fmt_string(f"[{current_status.title()}]", fg=order_status[current_status])}: ', int, fg='Blue',
             min_length=0, max_value=len(status_list), min_value=1, cancel_on='0')
-        
+
         if not status_index:
             continue
-        
+
         new_value = status_list[status_index - 1]
-        
 
         patch_value_from_key(source=data, patch='status',
                              to=new_value, where='id', equals=index)
@@ -556,7 +575,7 @@ def show_update_order_menu() -> None:
                     status_index = get_validated_input(
                         f'Please Select {key.title()}: ', int, fg='Blue',
                         min_length=0, max_value=len(status_list), min_value=1, cancel_on='0', cancel_text='SKIP')
-                    
+
                     value = status_list[status_index - 1]
 
                     if not status_index:
@@ -612,18 +631,18 @@ def show_delete_order_menu() -> None:
 
         if not id:
             return
-        
+
         successful = delete_item_in_list(id, data)
         clear()
         sort_orders_by_status()
         dicts_to_table(data)
-        
+
         if successful:
             if input(fmt_string('Item SuccessFully Updated. Would You Like To Update Another?[y/n]\n', fg='Green')) == 'n':
                 is_looping = False
 
 
-def select_order_items(current_items: list[int] =[]) -> list[int]:
+def select_order_items(current_items: list[int] = []) -> list[int]:
     # While -> Print / Select Catagorys
     result = []
     cat_map = get_external_data('catagory_mapping')
@@ -668,7 +687,7 @@ def select_order_items(current_items: list[int] =[]) -> list[int]:
 
 # region := TODO
 
-# TODO: Add connections to update, and delete views
+# TODO: Remove ID From DB Ops
 
 # TODO: migrate orders to db
 
@@ -679,7 +698,6 @@ def select_order_items(current_items: list[int] =[]) -> list[int]:
 
 # region := Setup
 external_data = load_json('./data/config.json')
-load_external_data(external_data)
 
 menus = {
     'main_menu': {
@@ -766,6 +784,7 @@ menus = {
 menu_state = 'main_menu'
 
 if __name__ == '__main__':
+    load_external_data(external_data)
     while menu_state:
         show_menu(menu_state)
         save_external_data(external_data)

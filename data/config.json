@@ -14,8 +14,8 @@
     "orders": {
         "name": "orders",
         "data": [],
-        "type" : "json",
-        "location": "./data/orders.json"
+        "type" : "db",
+        "connector": null
     },
     "catagory_mapping": {
         "name": "catagory_mapping",

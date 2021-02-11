@@ -1,3 +1,4 @@
+from logging import FATAL
 from typing import Any, Sequence
 import pymysql
 from pymysql import converters
@@ -27,12 +28,15 @@ class DbController():
 
             return cursor.fetchall()
         
-    def __escape_seq(self, seq: Sequence) -> str:
-        fields_string = '('
+    def __escape_seq(self, seq: Sequence, parnes: bool =True) -> str:
+        fields_string = ''
+        if parnes:
+            fields_string += '('
         for field in seq:
             fields_string += f'{field}, '
         fields_string = fields_string[0:-2]
-        fields_string += ')'
+        if parnes:
+            fields_string += ')'
         
         return fields_string
 
@@ -48,11 +52,14 @@ class DbController():
                 
         return result
     
-    def get_rows(self, table: str):
+    def get_all_rows(self, table: str):
         return self.__execute(f'SELECT * from {table}')
 
-    def get_row(self, table: str, id: int):
+    def get_row_by_id(self, table: str, id: int):
         return self.__execute(f'SELECT * from {table} WHERE id = {id}')
+    
+    def get_all_rows_where(self, table: str, field: str, condition: str):
+        return self.__execute(f'SELECT * from {table} WHERE {field} = "{condition}"')
     
     def insert(self, table: str, dtn: dict[str, Any]):
         fields = self.__escape_seq([key for key in dtn.keys()])
@@ -64,18 +71,22 @@ class DbController():
     def delete(self, table: str, id: int):
         self.__execute(f'DELETE FROM {table} WHERE id = {id}')
         
-    def update(self, table: str,id: int, dtn: dict[str, Any]):
+    def update(self, table: str, id: int, dtn: dict[str, Any]):
         query = ''
         for k,v in dtn.items():
             query += f"{k}='{v}', "
         query = query[0:-2]
         self.__execute(f'UPDATE {table} SET {query} WHERE id={id}')
-               
+    
+    def get_join(self, fields: list[str], source: str, target: str, condition: str):
+        query = f'SELECT {self.__escape_seq(fields, parnes=False)} FROM {source} LEFT OUTER JOIN {target} ON {condition}'
+        return self.__execute(query)   
 
 # Test Functions
-# controller = DbController('localhost', 'root', 'password', 'mini_project')
-# product = {
-#     'name': 'Bobby Bobbo',
-#     'phone_number': '07875480922'
-# }
-# controller.update('couriers', 14, product)
+controller = DbController('localhost', 'root', 'password', 'mini_project')
+product = {
+    'name': 'Bobby Bobbo',
+    'phone_number': '07875480922'
+}
+print(controller.get_join(['o.name', 'o.area', 'o.phone', 'c.name'],'orders o', 'couriers c', 'c.id = o.courier'))
+
