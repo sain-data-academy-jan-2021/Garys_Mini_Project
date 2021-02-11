@@ -6,6 +6,7 @@ import pymysql.cursors
 
 
 class DbController():
+    
 
     def __init__(self, host: str, user: str, password: str, database: str, autocommit: bool = True):
         # SET DECIMAL CONVERSION TO FLOAT
@@ -80,7 +81,14 @@ class DbController():
     
     def get_join(self, fields: list[str], source: str, target: str, condition: str):
         query = f'SELECT {self.__escape_seq(fields, parnes=False)} FROM {source} LEFT OUTER JOIN {target} ON {condition}'
-        return self.__execute(query)   
+        return self.__execute(query)
+    
+    def get_joins(self, fields: list[str], source: str, targets: list[str], conditions: list[str]):
+        query = f'SELECT {self.__escape_seq(fields, parnes=False)} FROM {source} '
+        assert len(targets) == len(conditions)
+        for i in range(len(targets)):
+            query += f'LEFT OUTER JOIN {targets[i]} ON {conditions[i]} '
+        return self.__execute(query)
 
 # Test Functions
 controller = DbController('localhost', 'root', 'password', 'mini_project')
@@ -88,5 +96,4 @@ product = {
     'name': 'Bobby Bobbo',
     'phone_number': '07875480922'
 }
-print(controller.get_join(['o.name', 'o.area', 'o.phone', 'c.name'],'orders o', 'couriers c', 'c.id = o.courier'))
 

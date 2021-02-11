@@ -206,11 +206,11 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
 
     if headers == []:
         for key in dicts[0].keys():
-            if key != 'items' and key != 'courier':
-                show_headers.append(key.title())
+            if key != 'items':
+                show_headers.append(key.replace('.',' ').title())
     else:
         for hdr in headers:
-            if hdr != 'items' and hdr != 'courier':
+            if hdr != 'items':
                 show_headers.append(hdr.title())
 
     table_data.append(show_headers)

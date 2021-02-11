@@ -13,12 +13,9 @@ def sort_orders_by_status():
     orders = get_external_data('orders')
     for i in range(len(orders)):
         for j in range(len(orders) - 1):
-            status_index1 = list(order_status.keys()).index(
-                orders[j]['status'])
-            status_index2 = list(order_status.keys()).index(
-                orders[j + 1]['status'])
-            if status_index1 > status_index2:
+            if orders[j]['status'] > orders[j + 1]['status']:
                 orders[j], orders[j + 1] = orders[j + 1], orders[j]
+    
     return orders
 
 
@@ -57,15 +54,8 @@ def load_external_data(data: dict[str, Any]) -> None:
             database = os.environ.get("mysql_db")
             try:
                 data_source['connector'] = DbController(
-                    host, user, password, database)  # type:ignore
-                if data_source['name'] == 'orders':
-                    data_source['data'] = data_source['connector'].get_join(
-                        fields=['o.id','o.name','o.address', 'o.area', 'o.phone', 'c.name'],
-                        source='orders o',
-                        target='couriers c',
-                        condition='c.id = o.courier')
-                else:    
-                    data_source['data'] = data_source['connector'].get_all_rows(
+                    host, user, password, database)  # type:ignore  
+                data_source['data'] = data_source['connector'].get_all_rows(
                         data_source['name'])
             except:
                 pass
@@ -207,16 +197,25 @@ def show_menu(menu_name: str) -> None:
     menu['handlers'][menu_option[1]]()
 
 
-def print_data_view(key: str) -> None:
+def print_data_view(key: str) -> None:# type: ignore
     data = get_external_data(key)
     # Get a list of the current IDs to ensure the user selects one that actually exists -> passed to is_present
     current_ids = [-1] + [item['id'] for item in data]
     if key == 'orders':
         is_looping = True
-
+        
+        cntr = get_external_data(key, 'connector') #type: DbController
+        data = cntr.get_joins(
+            fields=['o.id', 'o.name', 'o.address',
+                    'o.area', 'o.phone', 'courier.name AS Courier', 's.code AS Status'],
+            source='orders o',
+            targets=['couriers courier', 'status s'],
+            conditions=['courier.id = o.courier', 's.id = o.status']
+        )
+        
         while is_looping:
             clear()
-            dicts_to_table(data, paginate=True)
+            dicts_to_table(data, paginate=True)  # type: ignore
             index = get_validated_input(
                 'Please Select An Id To View (-1 To Sort): ', int, fg='Blue', cancel_on='0', is_present=current_ids)
             if index == False:
@@ -225,7 +224,7 @@ def print_data_view(key: str) -> None:
 
             if index == -1:
                 clear()
-                dicts_to_table(data, paginate=True)
+                dicts_to_table(data, paginate=True)  # type: ignore
                 sort_on_keys = [key for key in data[0]]
                 list_to_table(sort_on_keys, 'Available Sorts', enumerate=True)
                 sort_key = get_validated_input(
