@@ -200,7 +200,7 @@ def show_menu(menu_name: str) -> None:
     menu['handlers'][menu_option[1]]()
 
 
-def print_data_view(key: str) -> None:# type: ignore
+def print_data_view(key: str) -> None: # type: ignore
     data = get_external_data(key)
     # Get a list of the current IDs to ensure the user selects one that actually exists -> passed to is_present
     current_ids = [-1] + [item['id'] for item in data]
@@ -210,11 +210,11 @@ def print_data_view(key: str) -> None:# type: ignore
         cntr = get_external_data(key, 'connector') #type: DbController
         data = cntr.get_joins(
             fields=['o.id', 'o.name', 'o.address',
-                    'o.area', 'o.phone', 'courier.name AS Courier', 's.code AS Status'],
+                    'o.area', 'o.phone', 'courier.name AS Courier', 's.code AS status'],
             source='orders o',
             targets=['couriers courier', 'status s'],
             conditions=['courier.id = o.courier', 's.id = o.status']
-        )
+        ) 
         
         while is_looping:
             clear()
@@ -228,14 +228,24 @@ def print_data_view(key: str) -> None:# type: ignore
             if index == -1:
                 clear()
                 dicts_to_table(data, paginate=True)  # type: ignore
-                sort_on_keys = [key for key in data[0]]
+                sort_on_keys = list(data[0].keys())  # type: ignore
                 list_to_table(sort_on_keys, 'Available Sorts', enumerate=True)
                 sort_key = get_validated_input(
                     'How Would You Like To Sort By [id]? ', int, fg='Blue', min_value=1, max_value=len(sort_on_keys), cancel_on=0)
-                sort_list_by_value(key, sort_on_keys[sort_key - 1])
+                data = cntr.get_joins(
+                    fields=['o.id', 'o.name', 'o.address',
+                            'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
+                    source='orders o',
+                    targets=['couriers courier', 'status s'],
+                    conditions=['courier.id = o.courier', 's.id = o.status'],
+                    order=f'ORDER BY {sort_key}'
+                )
                 continue
-
-            show_order_detail_menu(index)
+            
+            for order in data:
+                if order['id'] == index: #type: ignore
+                    clear()
+                    show_order_detail_menu(order)
     else:
         is_looping = True
         while is_looping:
@@ -400,26 +410,27 @@ def show_search_menu(key: str) -> None:
 
 
 def show_add_order_menu() -> None:
-    data = get_external_data('orders')
-    items = data[0].items()
+    display_data = DbController.get_joins(
+        fields=['o.id', 'o.name', 'o.address',
+                'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
+        source='orders o',
+        targets=['couriers courier', 'status s'],
+        conditions=['courier.id = o.courier', 's.id = o.status']
+    )
+    
+    items = display_data[0].items()
 
     is_looping = True
     while is_looping:
         clear()
-        dicts_to_table(data)
+        dicts_to_table(display_data)
         new_dict = {}
-        id = max([order['id'] for order in data]) + 1
-
-        new_dict['id'] = id
-
         for key, value in items:
+            key = key.lower()
             if key != 'id':
-                if key == 'courier':
-                    new_value = -1
-
-                elif key == 'status':
-                    new_value = 'pending'
-
+                if key == 'courier' or key == 'status':
+                    continue
+                    
                 elif key == 'items':
                     new_value = select_order_items()
 
@@ -432,73 +443,77 @@ def show_add_order_menu() -> None:
 
                 new_dict[key] = new_value
 
-            # Random crap to show order as it's being built
             clear()
-            dicts_to_table(data)
-            print(fmt_string('Creating New Order...\n', fg='Cyan'))
-            for k, v in new_dict.items():
-                print(fmt_string(k.title(), fg='Cyan'), ': ',
-                      fmt_string(str(v).title(), fg='White'))
-            print()
-
-        successful = add_item_to_list(new_dict, data, 'name')
-
+            dicts_to_table(display_data)
+            print(fmt_string('\nCreating New Order...', fg='Cyan'))
+            dicts_to_table([new_dict], headers=list(display_data[0].keys())[1:-2])
+        
+        clear()
+        dicts_to_table(display_data)
+        print(fmt_string('\nOrder Complete!', fg='Green'))
+        dicts_to_table([new_dict], headers=list(display_data[0].keys())[1:-2])
+        
+        if input(fmt_string('Does This Look Correct?[y/n]\n', fg='Green')).lower() == 'n':
+            continue
+        
+        DbController.insert('orders',new_dict)    
+        
         clear()
         sort_orders_by_status()
-        dicts_to_table(data)
+        
+        display_data = DbController.get_joins(
+            fields=['o.id', 'o.name', 'o.address',
+                    'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
+            source='orders o',
+            targets=['couriers courier', 'status s'],
+            conditions=['courier.id = o.courier', 's.id = o.status']
+        )
+        
+        dicts_to_table(display_data)
 
-        if successful:
-            if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
-                is_looping = False
+        if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
+            is_looping = False
 
 
-def show_order_detail_menu(order_id: int) -> None:
-    clear()
-    orders = get_external_data('orders')
-    couriers = get_external_data('couriers')
-    products = get_external_data('products')
+def show_order_detail_menu(order) -> None:
+    con = get_external_data('orders','connector') #type: DbController
+    for k,v in order.items():
+        if k == 'status':
+            col = con.get_all_rows_where('status', 'code', v)[0]['style'] 
+            print(fmt_string(f'{str(k).title()}: ',fg='Blue'), fmt_string(f'{str(v).title()}\n', fg=col))
+        else:        
+            print(fmt_string(f'{str(k).title()}: ',fg='Blue'), f'{str(v).title()}\n')
+       
+    
+    items = con.get_all_rows_where('basket', 'order_id', order['id'])
+    items = con.get_joins_where(
+        fields = ['b.quantity AS "#x"','p.name', 'b.quantity * p.price AS "Sub Total"'],
+        source = 'orders o',
+        targets=['basket b', 'products p'],
+        conditions=[f'b.order_id = {order["id"]}','b.item = p.id'],
+        where= f'o.id = {order["id"]}',
+        type='INNER'
+    )
 
-    for order in orders:
-        if order['id'] == order_id:
-            for key, value in order.items():
-                if key == 'courier':
-                    if value != -1:
-                        courier_name = get_value_from_key(
-                            source=couriers, get='name', where='id', equals=value).title()
-                    else:
-                        courier_name = fmt_string(
-                            'Unassigned', fg='White', bg='Red')
+    if len(items) > 0:  # type: ignore
+        dicts_to_table(items)  # type: ignore
+    else:
+        print(fmt_string('Order: ', fg='Blue'), fmt_string('Basket Is Empty', fg='Red'))
 
-                    print(fmt_string(f'{key.title()}: ',
-                                     fg='Blue'), courier_name, '\n')
-
-                elif key == 'items':
-                    items_list = []
-                    for item in value:
-                        item_name = get_value_from_key(
-                            source=products, get='name', where='id', equals=item)
-                        items_list.append(item_name)
-
-                    if len(items_list) > 0:
-                        list_to_table(summerise_list(
-                            items_list), 'Current Order')
-
-                    else:
-                        print(fmt_string(f'{key.title()}: ',
-                                         fg='Blue'), 'None')
-
-                elif key == 'status':
-                    print(fmt_string(f'{key.title()}: ',
-                                     fg='Blue'), fmt_string(value.title(), fg=order_status[value]), '\n')
-                else:
-                    print(fmt_string(f'{key.title()}: ',
-                                     fg='Blue'), str(value).title(), '\n')
-
-    input(fmt_string('Press ENTER To Continue', fg='Green'))
+    input(fmt_string('\nPress ENTER To Continue', fg='Green'))
 
 
 def show_update_status_menu() -> None:
-    data = get_external_data('orders')
+    data = DbController.get_joins(
+        fields=['o.id', 'o.name', 'o.address',
+                'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
+        source='orders o',
+        targets=['couriers courier', 'status s'],
+        conditions=['courier.id = o.courier', 's.id = o.status']
+    )
+    
+    status_list = DbController.get_all_rows('status')
+    
     current_ids = [order['id'] for order in data]
     is_looping = True
     while is_looping:
@@ -511,24 +526,24 @@ def show_update_status_menu() -> None:
             is_looping = False
             continue
 
-        status_list = list(order_status.keys())
-        current_status = get_value_from_key(
-            source=data, get='status', where='id', equals=index)
-
+        status_list = DbController.get_all_rows('status')
+        current_row = DbController.get_all_rows_where('orders', 'id', index)[0]
+        
         clear()
-        list_to_table(status_list, 'Status List', enumerate=True)
-
+        dicts_to_table(data)
+        print(fmt_string(f'\nUpdating Order {index}...', fg='Cyan'))
+        
+        dicts_to_table(status_list)
         status_index = get_validated_input(
-            f'Please Select A New Status {fmt_string(f"[{current_status.title()}]", fg=order_status[current_status])}: ', int, fg='Blue',
+            f'Please Select A New Status: ', int, fg='Blue',
             min_length=0, max_value=len(status_list), min_value=1, cancel_on='0')
 
         if not status_index:
             continue
-
-        new_value = status_list[status_index - 1]
-
-        patch_value_from_key(source=data, patch='status',
-                             to=new_value, where='id', equals=index)
+        
+        current_row['status'] = status_index
+        
+        DbController.update('orders', index, current_row )
 
         clear()
         sort_orders_by_status()
@@ -540,7 +555,14 @@ def show_update_status_menu() -> None:
 
 
 def show_update_order_menu() -> None:
-    data = get_external_data('orders')
+    data = DbController.get_joins(
+        fields=['o.id', 'o.name', 'o.address',
+                'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
+        source='orders o',
+        targets=['couriers courier', 'status s'],
+        conditions=['courier.id = o.courier', 's.id = o.status']
+    )
+
     items = data[0].items()
     current_ids = [item['id'] for item in data]
 
@@ -557,70 +579,83 @@ def show_update_order_menu() -> None:
             return
 
         clear()
-        dtn = get_dict_by_key(source=data, where='id', equals=id)
-        dicts_to_table([dtn])
+        
+        order = DbController.get_joins_where(
+            fields=['o.id', 'o.name', 'o.address',
+                    'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
+            source='orders o',
+            targets=['couriers courier', 'status s'],
+            conditions=['courier.id = o.courier', 's.id = o.status'],
+            where=f'o.id = {id}'
+        )
+        
+        dicts_to_table(order)
 
-        new_dict['id'] = id
 
         for key, value in items:
             if key != 'id':
                 if key == 'items':
-                    value = select_order_items(get_value_from_key(
-                        source=data, get=key, where='id', equals=id))
+                    pass
 
                 elif key == 'status':
-                    status_list = list(order_status.keys())
+                    status_list = DbController.get_all_rows('status')
+                    status_ids = [status['id'] for status in status_list]
 
                     clear()
-                    list_to_table(status_list, 'Status List', enumerate=True)
+                    dicts_to_table(order)
+                    dicts_to_table(status_list)
 
                     status_index = get_validated_input(
                         f'Please Select {key.title()}: ', int, fg='Blue',
-                        min_length=0, max_value=len(status_list), min_value=1, cancel_on='0', cancel_text='SKIP')
+                        is_present=status_ids, min_value=1, cancel_on='0', cancel_text='SKIP')
 
-                    value = status_list[status_index - 1]
+                    value = status_index
 
                     if not status_index:
-                        value = get_value_from_key(
-                            source=data, get=key, where='id', equals=id)
+                        value = order[0]['status']
 
                 elif key == 'courier':
-                    courier_ids = [courier['id']
-                                   for courier in get_external_data('couriers')]
+                    courier_list = DbController.get_all_rows('couriers')
+                    courier_ids= [courier['id'] for courier in courier_list]
 
                     clear()
-                    dicts_to_table(get_external_data('couriers'))
-
+                    dicts_to_table(order)
+                    dicts_to_table(courier_list)
                     value = get_validated_input(
-                        f'Please Select {key.title()}: ', type(value), fg='Blue', is_present=courier_ids, cancel_on='0', cancel_text='SKIP')
+                        f'Please Select {key.title()}: ', int, fg='Blue', is_present=courier_ids, cancel_on='0', cancel_text='SKIP')
 
                     if not value:
-                        value = get_value_from_key(
-                            source=data, get=key, where='id', equals=id)
+                        value = order[0]['courier']
 
                 else:
                     value = get_validated_input(
                         f'Please Enter New {key.title()}: ', type(value), fg='Blue', min_length=0, cancel_on='', cancel_text='SKIP')
 
                     if not value:
-                        value = get_value_from_key(
-                            source=data, get=key, where='id', equals=id)
+                        value = order[0][key]
 
                 new_dict[key] = value
 
-        successful = update_item_in_list(new_dict, data)
+        DbController.update('orders', id, new_dict)
 
         clear()
         sort_orders_by_status()
         dicts_to_table(data)
 
-        if successful:
-            if input(fmt_string('Item SuccessFully Updated. Would You Like To Update Another?[y/n]\n', fg='Green')) == 'n':
-                is_looping = False
+
+        if input(fmt_string('Item SuccessFully Updated. Would You Like To Update Another?[y/n]\n', fg='Green')) == 'n':
+            is_looping = False
 
 
 def show_delete_order_menu() -> None:
-    data = get_external_data('orders')
+    data = DbController.get_joins(
+        fields=['o.id', 'o.name', 'o.address',
+                'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
+        source='orders o',
+        targets=['couriers courier', 'status s'],
+        conditions=['courier.id = o.courier', 's.id = o.status']
+    )
+    
     current_ids = [item['id'] for item in data]
 
     is_looping = True
@@ -634,14 +669,15 @@ def show_delete_order_menu() -> None:
         if not id:
             return
 
-        successful = delete_item_in_list(id, data)
+        DbController.delete('orders', id)
+        
         clear()
         sort_orders_by_status()
         dicts_to_table(data)
 
-        if successful:
-            if input(fmt_string('Item SuccessFully Updated. Would You Like To Update Another?[y/n]\n', fg='Green')) == 'n':
-                is_looping = False
+
+        if input(fmt_string('Item SuccessFully Updated. Would You Like To Update Another?[y/n]\n', fg='Green')) == 'n':
+            is_looping = False
 
 
 def select_order_items(current_items: list[int] = []) -> list[int]:
@@ -689,11 +725,9 @@ def select_order_items(current_items: list[int] = []) -> list[int]:
 
 # region := TODO
 
-# TODO: Remove ID From DB Ops
+# TODO: Fix Sorting On Order Functions!
 
-# TODO: migrate orders to db
-
-# TODO: figure out how to build join query
+# TODO: Add Select Order Items Functionality For DB's
 
 # endregion := TODO
 

@@ -3,6 +3,8 @@ from typing import Any
 from terminaltables import SingleTable
 from math import ceil
 
+from .DbController import DbController
+
 colors = {
     'Black': 30,
     'Red': 31,
@@ -96,7 +98,6 @@ def clear() -> None:
 
 def validated_input(prompt: str, *types, **options) -> tuple[int, Any]:
     cancel_text = ''
-
     if 'cancel_on' in options:
         if options['cancel_on'] == '':
             options['cancel_on'] = 'BLANK'
@@ -183,18 +184,18 @@ def validated_input(prompt: str, *types, **options) -> tuple[int, Any]:
 def get_validated_input(prompt: str, *types, **options) -> Any:
     # Wrapper For validated_input to allow looping until valid
     res, value = validated_input(prompt, *types, **options)
-    
+
     if res == -1:
         return False
-    
+
     while res != 1:
         print(value)
 
         res, value = validated_input(prompt, *types, **options)
-        
+
         if res == -1:
             return False
-        
+
     return value
 
 
@@ -207,7 +208,7 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
     if headers == []:
         for key in dicts[0].keys():
             if key != 'items':
-                show_headers.append(key.replace('.',' ').title())
+                show_headers.append(key.replace('.', ' ').title())
     else:
         for hdr in headers:
             if hdr != 'items':
@@ -223,9 +224,11 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
             for key, value in dtn.items():
 
                 if key == 'status':
-                    row.append(fmt_string(
-                        value.title(), fg=order_status[value]))
-                elif key != 'items' and key != 'courier':
+                    status_col = DbController.get_all_rows_where(
+                        'status', 'code', value)[0]
+
+                    row.append(fmt_string(value, fg=status_col['style']))
+                elif key != 'items':
                     if type(value) == float:
                         row.append('%.2f' % value)
                     else:
@@ -247,7 +250,7 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
             page_slice = []
             page_slice.append(table_data[0])
             page_slice += table_data[current_page *
-                                    page_length + 1:to]
+                                     page_length + 1:to]
             table = SingleTable(page_slice)
 
             table_width = table.table_width
@@ -257,9 +260,9 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
             print(table.table)
             print(fmt_string(
                 f'Showing Records {current_page * page_length + 1}-{to} Of {total_records}{" " * width_to_fill} Page {current_page+1} of {total_pages + 1}  ', bg='Blue', fg='White'))
-            
+
             option = input('[+/-] For Next/Previous Page\n').lower()
-            
+
             if option in ['', '+', '-']:
                 if option == '':
                     is_looping = False
