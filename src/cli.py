@@ -207,11 +207,11 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
 
     if headers == []:
         for key in dicts[0].keys():
-            if key != 'items':
+            if key != 'basket':
                 show_headers.append(key.replace('.', ' ').title())
     else:
         for hdr in headers:
-            if hdr != 'items':
+            if hdr != 'basket':
                 show_headers.append(hdr.title())
 
     table_data.append(show_headers)
@@ -228,7 +228,7 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
                         'status', 'code', value)[0]
 
                     row.append(fmt_string(value, fg=status_col['style']))
-                elif key != 'items':
+                elif key != 'basket':
                     if type(value) == float:
                         row.append('%.2f' % value)
                     else:

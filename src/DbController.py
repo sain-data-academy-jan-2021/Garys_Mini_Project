@@ -57,8 +57,8 @@ class DbController():
         res = cls.__execute(f'DESCRIBE mini_project.{table}')
         result = []
         for field in res:
-            if field['Field'] != 'id':  # type: ignore
-                result.append(field['Field'])  # type: ignore
+            if field['Field'] != 'id':  
+                result.append(field['Field']) 
                 
         return result
     
@@ -71,7 +71,7 @@ class DbController():
         return cls.__execute(f'SELECT * from {table} WHERE id = {id}')
     
     @classmethod
-    def get_all_rows_where(cls, table: str, field: str, condition: str) -> list[dict[Any, Any]]:
+    def get_all_rows_where(cls, table: str, field: str, condition: Any) -> list[dict[Any, Any]]:
         return cls.__execute(f'SELECT * from {table} WHERE {field} = "{condition}"')
     
     @classmethod
@@ -89,6 +89,16 @@ class DbController():
     @classmethod
     def delete(cls, table: str, id: int):
         cls.__execute(f'DELETE FROM {table} WHERE id = {id}')
+        
+    @classmethod
+    def delete_where(cls, table: str,where_fields: list[str],  where_conditions: list[str]):
+        query = f'DELETE FROM {table} WHERE '
+        assert(len(where_fields) == len(where_conditions))
+        for i in range(len(where_fields)):
+            query += f'{where_fields[i]} = {where_conditions[i]} '
+            if len(where_fields) > 1 and i < len(where_fields) - 1:
+                query += 'AND '
+        cls.__execute(query)
     
     @classmethod
     def update(cls, table: str, id: int, dtn: dict[str, Any]):
@@ -101,6 +111,24 @@ class DbController():
                 query += f"{k}='{v}', "
         query = query[0:-2]
         cls.__execute(f'UPDATE {table} SET {query} WHERE id={id}')
+        
+    @classmethod
+    def update_where(cls, table: str, where_fields: list[str],  where_conditions: list[str], dtn: dict[str, Any]):
+        query = ''
+        for k, v in dtn.items():
+            if v == None:
+                v = NULL
+                query += f"{k}={v}, "
+            else:
+                query += f"{k}='{v}', "
+        query = query[0:-2]
+        query += 'WHERE '
+        assert(len(where_fields) == len(where_conditions))
+        for i in range(len(where_fields)):
+            query += f'{where_fields[i]} = {where_conditions[i]} '
+            if len(where_fields) > 1 and i < len(where_fields) - 1:
+                query += 'AND '
+        cls.__execute(f'UPDATE {table} SET {query}')
     
     @classmethod
     def get_join(cls, fields: list[str], source: str, target: str, condition: str) -> list[dict[Any, Any]]:

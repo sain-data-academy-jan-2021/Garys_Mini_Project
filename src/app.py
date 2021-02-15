@@ -1,6 +1,7 @@
 from typing import Any, Hashable, Union
 import os
 from dotenv import load_dotenv
+from pymysql import NULL
 
 from .DbController import DbController
 from .cli import clear, dicts_to_table, fmt_string, get_validated_input, list_to_table, print_palette, print_table, validated_input, order_status
@@ -432,7 +433,7 @@ def show_add_order_menu() -> None:
                     continue
                     
                 elif key == 'items':
-                    new_value = select_order_items()
+                    new_value = NULL
 
                 else:
                     new_value = get_validated_input(
@@ -557,7 +558,7 @@ def show_update_status_menu() -> None:
 def show_update_order_menu() -> None:
     data = DbController.get_joins(
         fields=['o.id', 'o.name', 'o.address',
-                'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
+                'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status', 'basket'],
         source='orders o',
         targets=['couriers courier', 'status s'],
         conditions=['courier.id = o.courier', 's.id = o.status']
@@ -591,11 +592,10 @@ def show_update_order_menu() -> None:
         
         dicts_to_table(order)
 
-
         for key, value in items:
             if key != 'id':
-                if key == 'items':
-                    pass
+                if key == 'basket':
+                    select_order_items(id)
 
                 elif key == 'status':
                     status_list = DbController.get_all_rows('status')
@@ -612,7 +612,7 @@ def show_update_order_menu() -> None:
                     value = status_index
 
                     if not status_index:
-                        value = order[0]['status']
+                        value = DbController.get_rows_where('orders', 'status', 'id', id)[0]['status']
 
                 elif key == 'courier':
                     courier_list = DbController.get_all_rows('couriers')
@@ -625,7 +625,7 @@ def show_update_order_menu() -> None:
                         f'Please Select {key.title()}: ', int, fg='Blue', is_present=courier_ids, cancel_on='0', cancel_text='SKIP')
 
                     if not value:
-                        value = order[0]['courier']
+                        value = DbController.get_rows_where('orders', 'courier', 'id', id)[0]['courier']
 
                 else:
                     value = get_validated_input(
@@ -680,54 +680,101 @@ def show_delete_order_menu() -> None:
             is_looping = False
 
 
-def select_order_items(current_items: list[int] = []) -> list[int]:
-    # While -> Print / Select Catagorys
-    result = []
-    cat_map = get_external_data('catagory_mapping')
-    is_in_menu = True
-    while is_in_menu:
+def select_order_items(order_id) -> None:
+    current_basket = DbController.get_joins_where(
+        source = 'basket b',
+        fields = ['p.id', 'p.name', 'b.quantity'],
+        targets = ['products p'],
+        conditions=['b.item = p.id'],
+        where = f'b.order_id = {order_id}'
+    )
+        
+    current_rows = DbController.get_all_rows_where('basket', 'order_id', order_id)
+    current_ids = [item['item'] for item in current_rows]
+    
+    catagories = DbController.get_all_rows('catagories')
+    catagory_ids = [cat['id'] for cat in catagories]
+    
+    to_update = []
+    to_insert = []
+    to_delete = []
+    
+    is_in_cat = True
+    while is_in_cat:    
         clear()
-        menus = [item for item in cat_map]
-        list_to_table(menus, 'Catagories', enumerate=True)
-        option = get_validated_input(
-            'Please Select A Catagory: ', int, fg='Blue', min_length=1, max_value=len(menus), cancel_on=0)
-
-        if not option:
-            is_in_menu = False
+        dicts_to_table(current_basket)
+        print(fmt_string(f'Updating Basket For Order {order_id}...', fg='Cyan'))
+        dicts_to_table(catagories)
+        
+        catagory = get_validated_input('Please Select A Catagory: ', int, fg='Blue',is_present=catagory_ids, cancel_on='0', cancel_text='SKIP')
+        
+        if not catagory:
+            is_in_cat = False
             continue
-
-        is_in_cat = True
-        while is_in_cat:
+        
+        is_in_product = True
+        while(is_in_product):
             clear()
-            sub_menu = menus[option - 1]
-            indexs = cat_map[sub_menu]
-            products_list = get_external_data('products')
-
-            items = [get_value_from_key(
-                source=products_list, get='name', where='id', equals=index) for index in indexs]
-            list_to_table(items, sub_menu.title(), enumerate=True)
-
-            cat_option = get_validated_input(
-                'Please Select A Item: ', int, fg='Blue', min_length=1, max_value=len(items), cancel_on=0)
-
-            if not cat_option:
-                is_in_cat = False
+            dicts_to_table(current_basket)
+            
+            products = DbController.get_rows_where('products','id, name' ,'catagory', catagory)
+            product_ids = [item['id'] for item in products]
+            
+            print(fmt_string(
+            f'Updating Basket For Order {order_id}...', fg='Cyan'))
+            dicts_to_table(products)
+            
+            product = get_validated_input('Please Select An Item: ', int, fg='Blue',is_present=product_ids, cancel_on='0', cancel_text='GO BACK')
+            
+            if not product:
+                is_in_product = False
                 continue
+            
+            quantity = get_validated_input(
+                'Please Enter A Quantity: ', int, fg='Blue', cancel_on='0', cancel_text='GO BACK')
+            
+            if product in current_ids:
+                for item in current_rows:
+                    if item['item'] == product:
+                        if item['quantity'] + quantity <= 0:
+                            to_delete.append(item)
+                            current_rows.remove(item)
+                            
+                            for row in current_basket:
+                                print(row['id'], product)
+                                if row['id'] == product:
+                                    current_basket.remove(row)
+                                    
+                        else:
+                            item['quantity'] += quantity
+                            to_update.append(item)
+                            
+                            for row in current_basket:
+                                print(row['id'], product)
+                                if row['id'] == product:
+                                    row['quantity'] += quantity
+  
+            else:
+                to_insert.append({'order_id': order_id, 'item': product, 'quantity': quantity})
+                for row in products:
+                    if row['id'] == product:
+                        current_basket.append({'id': product, 'name': row['name'], 'quantity': quantity})
+                
+    for record in to_update:
+        DbController.update_where('basket', ['order_id', 'item'], [order_id, record['item']], record)
+    
+    for record in to_delete:
+        DbController.delete_where('basket', ['order_id', 'item'], [order_id, record['item']])
+    
+    for record in to_insert:
+        DbController.insert('basket', record) 
 
-            item_index = get_value_from_key(
-                source=products_list, get='id', where='name', equals=items[cat_option - 1])
-
-            result.append(item_index)
-
-    return result + current_items
 # endregion := View
 
 
 # region := TODO
 
-# TODO: Fix Sorting On Order Functions!
-
-# TODO: Add Select Order Items Functionality For DB's
+# TODO: Fix Sorting On Order Functions And Update Tables On Change!
 
 # endregion := TODO
 
@@ -825,4 +872,5 @@ if __name__ == '__main__':
         show_menu(menu_state)
         save_external_data(external_data)
     close_connections()
+    DbController.close()
 # endregion :=Setup
