@@ -49,11 +49,11 @@ class DbController():
         return fields_string
     
     @classmethod
-    def close(cls):
+    def close(cls) -> None:
         cls.connection.close()
     
     @classmethod
-    def get_field_names(cls, table: str):
+    def get_field_names(cls, table: str) -> list[Any]:
         res = cls.__execute(f'DESCRIBE mini_project.{table}')
         result = []
         for field in res:
@@ -63,8 +63,12 @@ class DbController():
         return result
     
     @classmethod
-    def get_all_rows(cls, table: str) -> list[dict[Any, Any]]:
-        return cls.__execute(f'SELECT * from {table}')
+    def get_column(cls, table: str, column: str) -> list[dict[Any, Any]]:
+        return cls.__execute(f'SELECT {column} FROM {table}')
+    
+    @classmethod
+    def get_all_rows(cls, table: str, order:str ='') -> list[dict[Any, Any]]:
+        return cls.__execute(f'SELECT * from {table} {order}')
 
     @classmethod
     def get_row_by_id(cls, table: str, id: int) -> list[dict[Any, Any]]:
@@ -142,7 +146,6 @@ class DbController():
         for i in range(len(targets)):
             query += f'{type} JOIN {targets[i]} ON {conditions[i]} '
         query += f'{order}'
-        
         return cls.__execute(query)
     
     @classmethod
@@ -154,4 +157,14 @@ class DbController():
         query += f'WHERE {where} {order}'
         return cls.__execute(query)
 
-
+    @classmethod
+    def search_table(cls, table: str, term: str):
+        fields = tuple(cls.get_field_names(table))
+        query = f'SELECT * FROM {table} WHERE '
+        for i in range(len(fields)):
+            query += f'{fields[i]} LIKE "%{term}%" '
+            if i < len(fields) - 1:
+                query += 'OR '
+        return cls.__execute(query)
+        
+        

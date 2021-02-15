@@ -224,9 +224,13 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
             for key, value in dtn.items():
 
                 if key == 'status':
-                    status_col = DbController.get_all_rows_where(
-                        'status', 'code', value)[0]
-
+                    if type(value) == str:
+                        status_col = DbController.get_all_rows_where(
+                            'status', 'code', value)[0]
+                    else:
+                        status_col = DbController.get_all_rows_where(
+                            'status', 'id', value)[0]
+                        
                     row.append(fmt_string(value, fg=status_col['style']))
                 elif key != 'basket':
                     if type(value) == float:
@@ -300,10 +304,13 @@ def list_to_table(lst: list[str], title: str, **options) -> None:
         split_lst.append(sub_list)
 
     for sub in split_lst:
-        table_data.append(sub)
+        if sub[0] == 'Separator':
+            table_data.append(['---'.center(25,' ')])
+        else:
+            table_data.append(sub)
 
     # for i, item in enumerate(lst):
     #     table_data.append([i+1, item])
-    table = SingleTable(table_data, title.upper())
+    table = SingleTable(table_data)
     table.inner_heading_row_border = False
     print(table.table)

@@ -1,198 +1,31 @@
-from typing import Any, Hashable, Union
 import os
 from dotenv import load_dotenv
 from pymysql import NULL
 
 from .DbController import DbController
-from .cli import clear, dicts_to_table, fmt_string, get_validated_input, list_to_table, print_palette, print_table, validated_input, order_status
-from .file_system import load_csv_to_dict, load_json, load_list, save_json, save_list, log, save_dict_to_csv
+from .cli import clear, dicts_to_table, fmt_string, get_validated_input, list_to_table, validated_input
+from .file_system import log
 load_dotenv()
 
 
-# region := Utils
-def sort_orders_by_status():
-    orders = get_external_data('orders')
-    for i in range(len(orders)):
-        for j in range(len(orders) - 1):
-            if orders[j]['status'] > orders[j + 1]['status']:
-                orders[j], orders[j + 1] = orders[j + 1], orders[j]
-    
-    return orders
-
-
-def sort_list_by_value(lst: str = 'orders', key: str = 'id'):
-    if key == 'status':
-        return sort_orders_by_status()
-
-    orders = get_external_data(lst)
-    for i in range(len(orders)):
-        for j in range(len(orders) - 1):
-            if orders[j][key] > orders[j + 1][key]:
-                orders[j], orders[j + 1] = orders[j + 1], orders[j]
-    return orders
-
-
 def not_implemented():
-    input(fmt_string('TODO: Feature Not Yet Implemented', fg='White', bg='Red'))
+    input(fmt_string('Feature Not Yet Implemented', fg='White', bg='Red'))
 
 
-def load_external_data(data: dict[str, Any]) -> None:
-    for data_source in data.values():
-        if 'location' in data_source:
-            if 'type' not in data_source:
-                load_list(data_source['location'], data_source['data'])
-            else:
-                if data_source['type'] == 'json':
-                    data_source['data'] = load_json(data_source['location'])
-
-                elif data_source['type'] == 'csv':
-                    data_source['data'] = load_csv_to_dict(
-                        data_source['location'])
-        elif data_source['type'] == 'db':
-            host = os.environ.get("mysql_host")
-            user = os.environ.get("mysql_user")
-            password = os.environ.get("mysql_pass")
-            database = os.environ.get("mysql_db")
-            
-            data_source['connector'] = DbController(
-                host, user, password, database)  # type:ignore  
-            print(data_source['connector'])
-            data_source['data'] = data_source['connector'].get_all_rows(
-                    data_source['name'])
-            try:
-                pass
-            except:
-                pass
-
-
-def refresh_connections():
-    global external_data
-    for data_source in external_data:
-        source = external_data[data_source]
-        if source['type'] == 'db':
-            source['data'] = source['connector'].get_all_rows(source['name'])
-
-
-def close_connections():
-    for data_source in external_data:
-        if data_source['type'] == 'db':
-            data_source['connector'].close()
-
-
-def save_external_data(data: dict[str, Any]) -> None:
-    for data_source in data.values():
-        if 'location' in data_source:
-            if 'type' not in data_source:
-                save_list(data_source['location'], data_source['data'])
-
-            else:
-                if data_source['type'] == 'json':
-                    save_json(data_source['location'], data_source['data'])
-
-                elif data_source['type'] == 'csv':
-                    save_dict_to_csv(
-                        data_source['location'], data_source['data'])
-
-
-def get_external_data(key: str, attr: str = 'data') -> Any:
-    global external_data
-    return external_data[key][attr]
-
-
-def summerise_list(lst: list) -> list[str]:
-    res = []
-    for i in range(len(lst)):
-        count = 0
-        for j in range(len(lst)):
-            if lst[i] == lst[j]:
-                count += 1
-        res.append(f"{count}x {lst[i]}")
-
-    res = list(set(res))
-    res.sort()
-    return res
-
-
-def get_dict_by_key(*, source: list[Any], where: Hashable, equals: Any) -> Any:
-    for dtn in source:
-        if dtn[where] == equals:
-            return dtn
-    return False
-
-
-def get_value_from_key(*, source: list[Any], get: Hashable, where: Hashable, equals: Any) -> Any:
-    for dtn in source:
-        if dtn[where] == equals:
-            return dtn[get]
-    return False
-
-
-def patch_value_from_key(*, source, patch, to, where, equals) -> Any:
-    for dtn in source:
-        if dtn[where] == equals and patch in dtn.keys():
-            dtn[patch] = to
-            return dtn
-
-    return False
-# endregion := Utils
-
-
-# region := Data
-def add_item_to_list(item: dict[Any, Any], data: list[dict[Any, Any]], unique_key: str) -> Union[list[dict[Any, Any]], bool]:
-    for dtn in data:
-        if item[unique_key] == dtn[unique_key]:
-            return False
-
-    data.append(item)
-    return data
-
-
-def update_item_in_list(item: dict[Any, Any], data: list[dict[Any, Any]]) -> Union[list[dict[Any, Any]], bool]:
-    for i, dtn in enumerate(data):
-        if dtn['id'] == item['id']:
-            data[i] = item
-            return data
-
-    return False
-
-
-def delete_item_in_list(id: Union[int, str], data: list[dict[Any, Any]]) -> Union[list[dict[Any, Any]], bool]:
-    for i in range(len(data) - 1, -1, -1):
-        if data[i]['id'] == id:
-            del data[i]
-            return data
-
-    return False
-
-
-def search_items_in_list(term: str, data: list[dict[Any, Any]]) -> list[dict[Any, Any]]:
-    results = []
-
-    for dtn in data:
-        for value in dtn.values():
-            if term in str(value):
-                results.append(dtn)
-
-    return results
-# endregion := Data
-
-
-# region := View
 def show_menu(menu_name: str) -> None:
     # Set the global menu_state to the selected menu to allow us to backtrack when returning
     global menu_state
     menu_state = menu_name
-    save_external_data(external_data) #type: ignore
     log('debug', f'Menu {menu_name} loaded')
     clear()
-    print(fmt_string('Hi and Welcome to the F&B Ordering System.', fg='Blue'))
-    sort_orders_by_status()
+    print(fmt_string('Hi and Welcome to the F&B Ordering System.\n', fg='Blue'))
 
     # Get the menu structure from the menus object, using it's items value to print to the screen
     menu = menus[menu_name]
-    print_table(menu['title'], menu['items'])
+    #print_table(menu['title'], menu['items'])
+    list_to_table(menu['items'], menu['title'])
 
-    if (menu_option := validated_input('Please Select An Option.\n', int, fg='Green', min_value=0, max_value=len(menu['handlers'])-1))[0] == 0:
+    if (menu_option := validated_input('\nPlease Select An Option.\n', int, fg='Green', min_value=0, max_value=len(menu['handlers'])-1))[0] == 0:
         log('debug', menu_option[1])
         input(menu_option[1])
         return
@@ -201,39 +34,38 @@ def show_menu(menu_name: str) -> None:
     menu['handlers'][menu_option[1]]()
 
 
-def print_data_view(key: str) -> None: # type: ignore
-    data = get_external_data(key)
-    # Get a list of the current IDs to ensure the user selects one that actually exists -> passed to is_present
-    current_ids = [-1] + [item['id'] for item in data]
+def print_data_view(key: str) -> None:  # type: ignore
     if key == 'orders':
         is_looping = True
-        
-        cntr = get_external_data(key, 'connector') #type: DbController
-        data = cntr.get_joins(
+        data = DbController.get_joins(
             fields=['o.id', 'o.name', 'o.address',
                     'o.area', 'o.phone', 'courier.name AS Courier', 's.code AS status'],
             source='orders o',
             targets=['couriers courier', 'status s'],
-            conditions=['courier.id = o.courier', 's.id = o.status']
-        ) 
-        
+            conditions=['courier.id = o.courier', 's.id = o.status'],
+            order='ORDER BY o.status'
+        )
+
+        current_ids = [item['id']
+                       for item in DbController.get_column(key, 'id')]
+
         while is_looping:
             clear()
-            dicts_to_table(data, paginate=True)  # type: ignore
+            dicts_to_table(data, paginate=True)
             index = get_validated_input(
-                'Please Select An Id To View (-1 To Sort): ', int, fg='Blue', cancel_on='0', is_present=current_ids)
+                'Please Select An Id To View (-1 To Sort): ', int, fg='Blue', cancel_on='0', is_present=current_ids + [-1])
             if index == False:
                 is_looping = False
                 continue
 
             if index == -1:
                 clear()
-                dicts_to_table(data, paginate=True)  # type: ignore
-                sort_on_keys = list(data[0].keys())  # type: ignore
+                dicts_to_table(data, paginate=True)
+                sort_on_keys = list(data[0].keys())
                 list_to_table(sort_on_keys, 'Available Sorts', enumerate=True)
                 sort_key = get_validated_input(
                     'How Would You Like To Sort By [id]? ', int, fg='Blue', min_value=1, max_value=len(sort_on_keys), cancel_on=0)
-                data = cntr.get_joins(
+                data = DbController.get_joins(
                     fields=['o.id', 'o.name', 'o.address',
                             'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
                     source='orders o',
@@ -242,12 +74,13 @@ def print_data_view(key: str) -> None: # type: ignore
                     order=f'ORDER BY {sort_key}'
                 )
                 continue
-            
+
             for order in data:
-                if order['id'] == index: #type: ignore
+                if order['id'] == index:
                     clear()
                     show_order_detail_menu(order)
     else:
+        data = DbController.get_all_rows(key)
         is_looping = True
         while is_looping:
             clear()
@@ -265,12 +98,12 @@ def print_data_view(key: str) -> None: # type: ignore
                 list_to_table(sort_on_keys, 'Available Sorts', enumerate=True)
                 sort_key = get_validated_input(
                     'How Would You Like To Sort By [id]? ', int, fg='Blue', min_value=1, max_value=len(sort_on_keys), cancel_on=0)
-                sort_list_by_value(key, sort_on_keys[sort_key - 1])
+                data = DbController.get_all_rows(key, order=f'ORDER BY {sort_key}')
                 continue
 
 
 def show_add_item_menu(get_key: str) -> None:
-    data = get_external_data(get_key)
+    data = DbController.get_all_rows(get_key)
     # Use the first element in the list to establish the key structure of the data
     items = data[0].items()
     # Get a list of current names to ensure that no duplicates are passed -> passed to unique
@@ -285,7 +118,7 @@ def show_add_item_menu(get_key: str) -> None:
         new_dict['id'] = id
 
         for key, value in items:
-            if key != 'id' and key != 'items':
+            if key != 'id' and key != 'basket':
                 if key == 'name':
                     value = get_validated_input(
                         f'Please Enter {key.replace("_"," ").title()}: ', type(value), fg='Blue', min_length=1, unique=current_names, cancel_on='0')
@@ -298,22 +131,17 @@ def show_add_item_menu(get_key: str) -> None:
 
                 new_dict[key] = value
 
-        successful = add_item_to_list(new_dict, data, 'name')
-        if get_external_data(get_key, 'type') == 'db':
-            get_external_data(get_key, 'connector').insert(get_key, new_dict)
-            refresh_connections()
+        DbController.insert(get_key, new_dict)
 
         clear()
-        sort_orders_by_status()
         dicts_to_table(data)
 
-        if successful:
-            if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
-                is_looping = False
+        if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
+            is_looping = False
 
 
 def show_update_item_menu(get_key: str) -> None:
-    data = get_external_data(get_key)
+    data = DbController.get_all_rows(get_key)
     items = data[0].items()
     current_ids = [item['id'] for item in data]
 
@@ -341,22 +169,15 @@ def show_update_item_menu(get_key: str) -> None:
 
                 new_dict[key] = value
 
-        successful = update_item_in_list(new_dict, data)
-        if get_external_data(get_key, 'type') == 'db':
-            get_external_data(get_key, 'connector').update(
-                get_key, id, new_dict)
-            refresh_connections()
-        clear()
-        sort_orders_by_status()
+        DbController.update(get_key, id, new_dict)
         dicts_to_table(data)
 
-        if successful:
-            if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
-                is_looping = False
+        if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
+            is_looping = False
 
 
 def show_delete_item_menu(get_key: str) -> None:
-    data = get_external_data(get_key)
+    data = DbController.get_all_rows(get_key)
     current_ids = [item['id'] for item in data]
 
     is_looping = True
@@ -369,45 +190,14 @@ def show_delete_item_menu(get_key: str) -> None:
         if not item_id:
             return
 
-        successful = delete_item_in_list(item_id, data)
-        if get_external_data(get_key, 'type') == 'db':
-            get_external_data(get_key, 'connector').delete(get_key, item_id)
-            refresh_connections()
+        DbController.delete(get_key, item_id)
 
         clear()
+        data = DbController.get_all_rows(get_key)
         dicts_to_table(data)
 
-        if successful:
-            if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
-                is_looping = False
-
-
-def show_search_menu(key: str) -> None:
-    data = get_external_data(key)
-    clear()
-    term = get_validated_input(
-        'Please Enter A Search Term: ', str, fg='Blue', cancel_on='0')
-
-    if not term:
-        return
-
-    results = search_items_in_list(term, data)
-
-    if len(results) == 0:
-        input(fmt_string(
-            f'\nNo Results Found For {term}!', fg='White', bg='Red'))
-        return
-
-    print(f'\nResults Found: {len(results)}\n')
-    dicts_to_table(results)
-
-    action = get_validated_input(fmt_string('What Would You Like To Do? (a)dd, (u)pdate, or (d)elete: ',
-                                            fg='Green'), str, is_present=['a', 'u', 'd'], cancel_on='0')
-
-    if not action:
-        return
-
-    not_implemented()
+        if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
+            is_looping = False
 
 
 def show_add_order_menu() -> None:
@@ -416,9 +206,10 @@ def show_add_order_menu() -> None:
                 'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
         source='orders o',
         targets=['couriers courier', 'status s'],
-        conditions=['courier.id = o.courier', 's.id = o.status']
+        conditions=['courier.id = o.courier', 's.id = o.status'],
+        order='ORDER BY o.status'
     )
-    
+
     items = display_data[0].items()
 
     is_looping = True
@@ -431,8 +222,8 @@ def show_add_order_menu() -> None:
             if key != 'id':
                 if key == 'courier' or key == 'status':
                     continue
-                    
-                elif key == 'items':
+
+                elif key == 'basket':
                     new_value = NULL
 
                 else:
@@ -447,29 +238,30 @@ def show_add_order_menu() -> None:
             clear()
             dicts_to_table(display_data)
             print(fmt_string('\nCreating New Order...', fg='Cyan'))
-            dicts_to_table([new_dict], headers=list(display_data[0].keys())[1:-2])
-        
+            dicts_to_table([new_dict], headers=list(
+                display_data[0].keys())[1:-2])
+
         clear()
         dicts_to_table(display_data)
         print(fmt_string('\nOrder Complete!', fg='Green'))
         dicts_to_table([new_dict], headers=list(display_data[0].keys())[1:-2])
-        
+
         if input(fmt_string('Does This Look Correct?[y/n]\n', fg='Green')).lower() == 'n':
             continue
-        
-        DbController.insert('orders',new_dict)    
-        
+
+        DbController.insert('orders', new_dict)
+
         clear()
-        sort_orders_by_status()
-        
+
         display_data = DbController.get_joins(
             fields=['o.id', 'o.name', 'o.address',
                     'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
             source='orders o',
             targets=['couriers courier', 'status s'],
-            conditions=['courier.id = o.courier', 's.id = o.status']
+            conditions=['courier.id = o.courier', 's.id = o.status'],
+            order='ORDER BY o.status'
         )
-        
+
         dicts_to_table(display_data)
 
         if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
@@ -477,29 +269,32 @@ def show_add_order_menu() -> None:
 
 
 def show_order_detail_menu(order) -> None:
-    con = get_external_data('orders','connector') #type: DbController
-    for k,v in order.items():
+    for k, v in order.items():
         if k == 'status':
-            col = con.get_all_rows_where('status', 'code', v)[0]['style'] 
-            print(fmt_string(f'{str(k).title()}: ',fg='Blue'), fmt_string(f'{str(v).title()}\n', fg=col))
-        else:        
-            print(fmt_string(f'{str(k).title()}: ',fg='Blue'), f'{str(v).title()}\n')
-       
-    
-    items = con.get_all_rows_where('basket', 'order_id', order['id'])
-    items = con.get_joins_where(
-        fields = ['b.quantity AS "#x"','p.name', 'b.quantity * p.price AS "Sub Total"'],
-        source = 'orders o',
+            col = DbController.get_all_rows_where(
+                'status', 'code', v)[0]['style']
+            print(fmt_string(f'{str(k).title()}: ', fg='Blue'),
+                  fmt_string(f'{str(v).title()}\n', fg=col))
+        else:
+            print(fmt_string(f'{str(k).title()}: ',
+                             fg='Blue'), f'{str(v).title()}\n')
+
+    items = DbController.get_all_rows_where('basket', 'order_id', order['id'])
+    items = DbController.get_joins_where(
+        fields=['b.quantity AS "#x"', 'p.name',
+                'b.quantity * p.price AS "Sub Total"'],
+        source='orders o',
         targets=['basket b', 'products p'],
-        conditions=[f'b.order_id = {order["id"]}','b.item = p.id'],
-        where= f'o.id = {order["id"]}',
+        conditions=[f'b.order_id = {order["id"]}', 'b.item = p.id'],
+        where=f'o.id = {order["id"]}',
         type='INNER'
     )
 
     if len(items) > 0:  # type: ignore
         dicts_to_table(items)  # type: ignore
     else:
-        print(fmt_string('Order: ', fg='Blue'), fmt_string('Basket Is Empty', fg='Red'))
+        print(fmt_string('Order: ', fg='Blue'),
+              fmt_string('Basket Is Empty', fg='Red'))
 
     input(fmt_string('\nPress ENTER To Continue', fg='Green'))
 
@@ -510,11 +305,12 @@ def show_update_status_menu() -> None:
                 'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
         source='orders o',
         targets=['couriers courier', 'status s'],
-        conditions=['courier.id = o.courier', 's.id = o.status']
+        conditions=['courier.id = o.courier', 's.id = o.status'],
+        order='ORDER BY o.status'
     )
-    
+
     status_list = DbController.get_all_rows('status')
-    
+
     current_ids = [order['id'] for order in data]
     is_looping = True
     while is_looping:
@@ -529,11 +325,11 @@ def show_update_status_menu() -> None:
 
         status_list = DbController.get_all_rows('status')
         current_row = DbController.get_all_rows_where('orders', 'id', index)[0]
-        
+
         clear()
         dicts_to_table(data)
         print(fmt_string(f'\nUpdating Order {index}...', fg='Cyan'))
-        
+
         dicts_to_table(status_list)
         status_index = get_validated_input(
             f'Please Select A New Status: ', int, fg='Blue',
@@ -541,13 +337,21 @@ def show_update_status_menu() -> None:
 
         if not status_index:
             continue
-        
-        current_row['status'] = status_index
-        
-        DbController.update('orders', index, current_row )
 
+        current_row['status'] = status_index
+
+        DbController.update('orders', index, current_row)
+
+        data = DbController.get_joins(
+            fields=['o.id', 'o.name', 'o.address',
+                    'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
+            source='orders o',
+            targets=['couriers courier', 'status s'],
+            conditions=['courier.id = o.courier', 's.id = o.status'],
+            order='ORDER BY o.status'
+        )
+        
         clear()
-        sort_orders_by_status()
         dicts_to_table(data)
 
         if input(fmt_string('Status SuccessFully Updated. Would You Like To Update Another?[y/n]\n', fg='Green')) == 'n':
@@ -561,7 +365,8 @@ def show_update_order_menu() -> None:
                 'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status', 'basket'],
         source='orders o',
         targets=['couriers courier', 'status s'],
-        conditions=['courier.id = o.courier', 's.id = o.status']
+        conditions=['courier.id = o.courier', 's.id = o.status'],
+        order='ORDER BY o.status'
     )
 
     items = data[0].items()
@@ -580,16 +385,17 @@ def show_update_order_menu() -> None:
             return
 
         clear()
-        
+
         order = DbController.get_joins_where(
             fields=['o.id', 'o.name', 'o.address',
                     'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
             source='orders o',
             targets=['couriers courier', 'status s'],
             conditions=['courier.id = o.courier', 's.id = o.status'],
-            where=f'o.id = {id}'
+            where=f'o.id = {id}',
+            order='ORDER BY o.status'
         )
-        
+
         dicts_to_table(order)
 
         for key, value in items:
@@ -612,11 +418,12 @@ def show_update_order_menu() -> None:
                     value = status_index
 
                     if not status_index:
-                        value = DbController.get_rows_where('orders', 'status', 'id', id)[0]['status']
+                        value = DbController.get_rows_where(
+                            'orders', 'status', 'id', id)[0]['status']
 
                 elif key == 'courier':
                     courier_list = DbController.get_all_rows('couriers')
-                    courier_ids= [courier['id'] for courier in courier_list]
+                    courier_ids = [courier['id'] for courier in courier_list]
 
                     clear()
                     dicts_to_table(order)
@@ -625,7 +432,8 @@ def show_update_order_menu() -> None:
                         f'Please Select {key.title()}: ', int, fg='Blue', is_present=courier_ids, cancel_on='0', cancel_text='SKIP')
 
                     if not value:
-                        value = DbController.get_rows_where('orders', 'courier', 'id', id)[0]['courier']
+                        value = DbController.get_rows_where(
+                            'orders', 'courier', 'id', id)[0]['courier']
 
                 else:
                     value = get_validated_input(
@@ -639,9 +447,7 @@ def show_update_order_menu() -> None:
         DbController.update('orders', id, new_dict)
 
         clear()
-        sort_orders_by_status()
         dicts_to_table(data)
-
 
         if input(fmt_string('Item SuccessFully Updated. Would You Like To Update Another?[y/n]\n', fg='Green')) == 'n':
             is_looping = False
@@ -653,9 +459,10 @@ def show_delete_order_menu() -> None:
                 'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
         source='orders o',
         targets=['couriers courier', 'status s'],
-        conditions=['courier.id = o.courier', 's.id = o.status']
+        conditions=['courier.id = o.courier', 's.id = o.status'],
+        order='ORDER BY o.status'
     )
-    
+
     current_ids = [item['id'] for item in data]
 
     is_looping = True
@@ -670,127 +477,143 @@ def show_delete_order_menu() -> None:
             return
 
         DbController.delete('orders', id)
+
+        data = DbController.get_joins(
+            fields=['o.id', 'o.name', 'o.address',
+                    'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
+            source='orders o',
+            targets=['couriers courier', 'status s'],
+            conditions=['courier.id = o.courier', 's.id = o.status'],
+            order='ORDER BY o.status'
+        )
         
         clear()
-        sort_orders_by_status()
         dicts_to_table(data)
-
 
         if input(fmt_string('Item SuccessFully Updated. Would You Like To Update Another?[y/n]\n', fg='Green')) == 'n':
             is_looping = False
 
 
 def select_order_items(order_id) -> None:
-    current_basket = DbController.get_joins_where(
-        source = 'basket b',
-        fields = ['p.id', 'p.name', 'b.quantity'],
-        targets = ['products p'],
+    current_basket = list(DbController.get_joins_where(
+        source='basket b',
+        fields=['p.id', 'p.name', 'b.quantity'],
+        targets=['products p'],
         conditions=['b.item = p.id'],
-        where = f'b.order_id = {order_id}'
-    )
-        
-    current_rows = DbController.get_all_rows_where('basket', 'order_id', order_id)
+        where=f'b.order_id = {order_id}'
+    ))
+
+    current_rows = DbController.get_all_rows_where(
+        'basket', 'order_id', order_id)
     current_ids = [item['item'] for item in current_rows]
-    
+
     catagories = DbController.get_all_rows('catagories')
     catagory_ids = [cat['id'] for cat in catagories]
-    
+
     to_update = []
     to_insert = []
     to_delete = []
-    
+
     is_in_cat = True
-    while is_in_cat:    
+    while is_in_cat:
         clear()
-        dicts_to_table(current_basket)
-        print(fmt_string(f'Updating Basket For Order {order_id}...', fg='Cyan'))
+        if len(current_basket) > 0:
+            dicts_to_table(current_basket)
+        print(fmt_string(
+            f'Updating Basket For Order {order_id}...', fg='Cyan'))
         dicts_to_table(catagories)
-        
-        catagory = get_validated_input('Please Select A Catagory: ', int, fg='Blue',is_present=catagory_ids, cancel_on='0', cancel_text='SKIP')
-        
+
+        catagory = get_validated_input('Please Select A Catagory: ', int,
+                                       fg='Blue', is_present=catagory_ids, cancel_on='0', cancel_text='SKIP')
+
         if not catagory:
             is_in_cat = False
             continue
-        
+
         is_in_product = True
         while(is_in_product):
             clear()
-            dicts_to_table(current_basket)
-            
-            products = DbController.get_rows_where('products','id, name' ,'catagory', catagory)
+            if len(current_basket) > 0:
+                dicts_to_table(current_basket)
+
+            products = DbController.get_rows_where(
+                'products', 'id, name', 'catagory', catagory)
             product_ids = [item['id'] for item in products]
-            
+
             print(fmt_string(
-            f'Updating Basket For Order {order_id}...', fg='Cyan'))
+                f'Updating Basket For Order {order_id}...', fg='Cyan'))
             dicts_to_table(products)
-            
-            product = get_validated_input('Please Select An Item: ', int, fg='Blue',is_present=product_ids, cancel_on='0', cancel_text='GO BACK')
-            
+
+            product = get_validated_input(
+                'Please Select An Item: ', int, fg='Blue', is_present=product_ids, cancel_on='0', cancel_text='GO BACK')
+
             if not product:
                 is_in_product = False
                 continue
-            
+
             quantity = get_validated_input(
                 'Please Enter A Quantity: ', int, fg='Blue', cancel_on='0', cancel_text='GO BACK')
-            
+
             if product in current_ids:
                 for item in current_rows:
                     if item['item'] == product:
                         if item['quantity'] + quantity <= 0:
                             to_delete.append(item)
                             current_rows.remove(item)
-                            
+
                             for row in current_basket:
                                 print(row['id'], product)
                                 if row['id'] == product:
                                     current_basket.remove(row)
-                                    
+
                         else:
                             item['quantity'] += quantity
                             to_update.append(item)
-                            
+
                             for row in current_basket:
-                                print(row['id'], product)
                                 if row['id'] == product:
                                     row['quantity'] += quantity
-  
+
             else:
-                to_insert.append({'order_id': order_id, 'item': product, 'quantity': quantity})
+                to_insert.append(
+                    {'order_id': order_id, 'item': product, 'quantity': quantity})
                 for row in products:
                     if row['id'] == product:
-                        current_basket.append({'id': product, 'name': row['name'], 'quantity': quantity})
-                
+                        current_basket.append(
+                            {'id': product, 'name': row['name'], 'quantity': quantity})
+
     for record in to_update:
-        DbController.update_where('basket', ['order_id', 'item'], [order_id, record['item']], record)
-    
+        DbController.update_where('basket', ['order_id', 'item'], [
+                                  order_id, record['item']], record)
+
     for record in to_delete:
-        DbController.delete_where('basket', ['order_id', 'item'], [order_id, record['item']])
-    
+        DbController.delete_where('basket', ['order_id', 'item'], [
+                                  order_id, record['item']])
+
     for record in to_insert:
-        DbController.insert('basket', record) 
-
-# endregion := View
+        DbController.insert('basket', record)
 
 
-# region := TODO
-
-# TODO: Fix Sorting On Order Functions And Update Tables On Change!
-
-# endregion := TODO
-
+def search_table(table: str):
+    clear()
+    term = get_validated_input('Please Enter A Search Term: ', fg='Blue')
+    data = DbController.search_table(table, term)
+    if len(data) > 0:
+        dicts_to_table(data)
+    else:
+        print(fmt_string('No Results Found', fg='White', bg='Red'))
+    input(fmt_string('Press Enter To Continue', fg='Green'))
 
 # region := Setup
-external_data = load_json('./data/config.json')
-
 menus = {
     'main_menu': {
         'title': 'Main Menu',
-        'items': ['[0] Exit',
-                  '[1] Product Maintainance',
-                  '[2] Courier Maintainance',
-                  '[3] Order Maintainance',
+        'items': ['[0] ❌ Exit',
                   'Separator',
-                  '[4] System Maintainance'
+                  '[1] 🧇 Product Maintainance',
+                  '[2] 🚚 Courier Maintainance',
+                  '[3] 📋 Order Maintainance',
+                  '[4] ⚙ System Maintainance'
                   ],
         'handlers': [exit,
                      lambda: show_menu('product_menu'),
@@ -801,7 +624,8 @@ menus = {
     },
     'product_menu': {
         'title': 'Product Maintainance',
-        'items': ['[0] Return To Main Menu',
+        'items': ['[0] ⏪ Return To Main Menu',
+                  'Separator',
                   '[1] Show All Products',
                   '[2] Create New Product',
                   '[3] Update Product',
@@ -812,12 +636,13 @@ menus = {
                      lambda: show_add_item_menu('products'),
                      lambda: show_update_item_menu('products'),
                      lambda: show_delete_item_menu('products'),
-                     lambda: show_search_menu('products')
+                     lambda: search_table('products')
                      ]
     },
     'courier_menu': {
         'title': 'Courier Maintainance',
-        'items': ['[0] Return To Main Menu',
+        'items': ['[0] ⏪ Return To Main Menu',
+                  'Separator',
                   '[1] Show All Couriers',
                   '[2] Create New Courier',
                   '[3] Update Courier',
@@ -828,18 +653,20 @@ menus = {
                      lambda: show_add_item_menu('couriers'),
                      lambda: show_update_item_menu('couriers'),
                      lambda: show_delete_item_menu('couriers'),
-                     lambda: show_search_menu('couriers')
+                     lambda: search_table('couriers')
                      ]
     },
     'orders': {
         'title': 'Manage Orders',
         'items': [
-            '[0] Return To Main Menu',
+            '[0] ⏪ Return To Main Menu',
+            'Separator',
             '[1] View Current Orders',
             '[2] Create New Order',
             '[3] Update Status',
             '[4] Update Order',
-            '[5] Delete Order'
+            '[5] Delete Order',
+            '[6] Search'
         ],
         'handlers': [
             lambda: show_menu('main_menu'),
@@ -847,13 +674,15 @@ menus = {
             show_add_order_menu,
             show_update_status_menu,
             show_update_order_menu,
-            show_delete_order_menu
+            show_delete_order_menu,
+            lambda: search_table('orders')
         ]
     },
     'system_maintainance_menu': {
         'title': 'System Maintainance',
         'items': [
-            '[0] Return To Main Menu',
+            '[0] ⏪ Return To Main Menu',
+            'Separator',
             '[1] Update Menu Grouping'
         ],
         'handlers': [
@@ -867,10 +696,12 @@ menus = {
 menu_state = 'main_menu'
 
 if __name__ == '__main__':
-    load_external_data(external_data)
+    host = os.environ.get("mysql_host")
+    user = os.environ.get("mysql_user")
+    password = os.environ.get("mysql_pass")
+    database = os.environ.get("mysql_db")
+    DbController(host, user, password, database)  # type: ignore
     while menu_state:
         show_menu(menu_state)
-        save_external_data(external_data)
-    close_connections()
     DbController.close()
 # endregion :=Setup
