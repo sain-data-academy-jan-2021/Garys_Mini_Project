@@ -1,4 +1,5 @@
 import os
+from typing import Any
 from dotenv import load_dotenv
 from pymysql import NULL
 
@@ -11,6 +12,17 @@ load_dotenv()
 def not_implemented():
     input(fmt_string('Feature Not Yet Implemented', fg='White', bg='Red'))
 
+
+def get_order_data(sort: str = 'o.status') -> list[dict[Any, Any]]:
+    return DbController.get_joins(
+        fields=['o.id', 'o.name', 'o.address',
+                'o.area', 'o.phone', 'courier.name AS Courier', 's.code AS status'],
+        source='orders o',
+        targets=['couriers courier', 'status s'],
+        conditions=['courier.id = o.courier', 's.id = o.status'],
+        order=f'ORDER BY {sort}'
+    )
+    
 
 def show_menu(menu_name: str) -> None:
     # Set the global menu_state to the selected menu to allow us to backtrack when returning
@@ -37,14 +49,7 @@ def show_menu(menu_name: str) -> None:
 def print_data_view(key: str) -> None:  # type: ignore
     if key == 'orders':
         is_looping = True
-        data = DbController.get_joins(
-            fields=['o.id', 'o.name', 'o.address',
-                    'o.area', 'o.phone', 'courier.name AS Courier', 's.code AS status'],
-            source='orders o',
-            targets=['couriers courier', 'status s'],
-            conditions=['courier.id = o.courier', 's.id = o.status'],
-            order='ORDER BY o.status'
-        )
+        data = get_order_data()
 
         current_ids = [item['id']
                        for item in DbController.get_column(key, 'id')]
@@ -64,15 +69,8 @@ def print_data_view(key: str) -> None:  # type: ignore
                 sort_on_keys = list(data[0].keys())
                 list_to_table(sort_on_keys, 'Available Sorts', enumerate=True)
                 sort_key = get_validated_input(
-                    'How Would You Like To Sort By [id]? ', int, fg='Blue', min_value=1, max_value=len(sort_on_keys), cancel_on=0)
-                data = DbController.get_joins(
-                    fields=['o.id', 'o.name', 'o.address',
-                            'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
-                    source='orders o',
-                    targets=['couriers courier', 'status s'],
-                    conditions=['courier.id = o.courier', 's.id = o.status'],
-                    order=f'ORDER BY {sort_key}'
-                )
+                    'What Would You Like To Sort By [id]? ', int, fg='Blue', min_value=1, max_value=len(sort_on_keys), cancel_on=0)
+                data = get_order_data(sort_key if sort_key is not 7 else 'o.status')
                 continue
 
             for order in data:
@@ -201,14 +199,7 @@ def show_delete_item_menu(get_key: str) -> None:
 
 
 def show_add_order_menu() -> None:
-    display_data = DbController.get_joins(
-        fields=['o.id', 'o.name', 'o.address',
-                'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
-        source='orders o',
-        targets=['couriers courier', 'status s'],
-        conditions=['courier.id = o.courier', 's.id = o.status'],
-        order='ORDER BY o.status'
-    )
+    display_data = get_order_data()
 
     items = display_data[0].items()
 
@@ -253,14 +244,7 @@ def show_add_order_menu() -> None:
 
         clear()
 
-        display_data = DbController.get_joins(
-            fields=['o.id', 'o.name', 'o.address',
-                    'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
-            source='orders o',
-            targets=['couriers courier', 'status s'],
-            conditions=['courier.id = o.courier', 's.id = o.status'],
-            order='ORDER BY o.status'
-        )
+        display_data = get_order_data()
 
         dicts_to_table(display_data)
 
@@ -300,14 +284,7 @@ def show_order_detail_menu(order) -> None:
 
 
 def show_update_status_menu() -> None:
-    data = DbController.get_joins(
-        fields=['o.id', 'o.name', 'o.address',
-                'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
-        source='orders o',
-        targets=['couriers courier', 'status s'],
-        conditions=['courier.id = o.courier', 's.id = o.status'],
-        order='ORDER BY o.status'
-    )
+    data = get_order_data()
 
     status_list = DbController.get_all_rows('status')
 
@@ -342,14 +319,7 @@ def show_update_status_menu() -> None:
 
         DbController.update('orders', index, current_row)
 
-        data = DbController.get_joins(
-            fields=['o.id', 'o.name', 'o.address',
-                    'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
-            source='orders o',
-            targets=['couriers courier', 'status s'],
-            conditions=['courier.id = o.courier', 's.id = o.status'],
-            order='ORDER BY o.status'
-        )
+        data = get_order_data()
         
         clear()
         dicts_to_table(data)
@@ -360,14 +330,7 @@ def show_update_status_menu() -> None:
 
 
 def show_update_order_menu() -> None:
-    data = DbController.get_joins(
-        fields=['o.id', 'o.name', 'o.address',
-                'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status', 'basket'],
-        source='orders o',
-        targets=['couriers courier', 'status s'],
-        conditions=['courier.id = o.courier', 's.id = o.status'],
-        order='ORDER BY o.status'
-    )
+    data = get_order_data()
 
     items = data[0].items()
     current_ids = [item['id'] for item in data]
@@ -397,13 +360,10 @@ def show_update_order_menu() -> None:
         )
 
         dicts_to_table(order)
-
         for key, value in items:
+            key = key.lower()
             if key != 'id':
-                if key == 'basket':
-                    select_order_items(id)
-
-                elif key == 'status':
+                if key == 'status':
                     status_list = DbController.get_all_rows('status')
                     status_ids = [status['id'] for status in status_list]
 
@@ -445,7 +405,8 @@ def show_update_order_menu() -> None:
                 new_dict[key] = value
 
         DbController.update('orders', id, new_dict)
-
+        select_order_items(id)
+        
         clear()
         dicts_to_table(data)
 
@@ -454,14 +415,7 @@ def show_update_order_menu() -> None:
 
 
 def show_delete_order_menu() -> None:
-    data = DbController.get_joins(
-        fields=['o.id', 'o.name', 'o.address',
-                'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
-        source='orders o',
-        targets=['couriers courier', 'status s'],
-        conditions=['courier.id = o.courier', 's.id = o.status'],
-        order='ORDER BY o.status'
-    )
+    data = get_order_data()
 
     current_ids = [item['id'] for item in data]
 
@@ -478,14 +432,7 @@ def show_delete_order_menu() -> None:
 
         DbController.delete('orders', id)
 
-        data = DbController.get_joins(
-            fields=['o.id', 'o.name', 'o.address',
-                    'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
-            source='orders o',
-            targets=['couriers courier', 'status s'],
-            conditions=['courier.id = o.courier', 's.id = o.status'],
-            order='ORDER BY o.status'
-        )
+        data = get_order_data()
         
         clear()
         dicts_to_table(data)
@@ -533,7 +480,18 @@ def select_order_items(order_id) -> None:
         is_in_product = True
         while(is_in_product):
             clear()
+                        
+            # Reconcile duplicate records -> only affects locally
             if len(current_basket) > 0:
+                for i in range(len(current_basket) - 1):
+                    for j in range(i+1,len(current_basket)):
+                        if current_basket[i]['id'] == current_basket[j]['id']:
+                            current_basket[i]['quantity'] += current_basket[j]['quantity']
+                            del current_basket[j]
+                            
+                    if current_basket[i]['quantity'] <= 0:
+                        del current_basket[i] 
+            
                 dicts_to_table(current_basket)
 
             products = DbController.get_rows_where(
@@ -581,6 +539,16 @@ def select_order_items(order_id) -> None:
                     if row['id'] == product:
                         current_basket.append(
                             {'id': product, 'name': row['name'], 'quantity': quantity})
+            
+            # reconcile updates to additions -> would affect table            
+            for i in range(len(to_insert) - 1):
+                for j in range(i+1,len(to_insert)):
+                        if to_insert[i]['item'] == to_insert[j]['item']:
+                            to_insert[i]['quantity'] += to_insert[j]['quantity']
+                            del to_insert[j]
+                            
+                if to_insert[i]['quantity'] <=0:
+                    del to_insert[i]
 
     for record in to_update:
         DbController.update_where('basket', ['order_id', 'item'], [
@@ -597,12 +565,28 @@ def select_order_items(order_id) -> None:
 def search_table(table: str):
     clear()
     term = get_validated_input('Please Enter A Search Term: ', fg='Blue')
-    data = DbController.search_table(table, term)
+    
+    if table == 'orders':
+        data = DbController.search_joined_table(
+            table='orders o',
+            term=term,
+            fields=['o.id', 'o.name', 'o.address',
+                    'o.area', 'o.phone', 'courier.name AS Courier', 's.code AS status'],
+            targets=['couriers courier', 'status s'],
+            conditions=['courier.id = o.courier', 's.id = o.status']
+        )
+    else:
+        data = DbController.search_table(table, term)
+    
     if len(data) > 0:
         dicts_to_table(data)
     else:
         print(fmt_string('No Results Found', fg='White', bg='Red'))
     input(fmt_string('Press Enter To Continue', fg='Green'))
+
+
+# TODO: Fix Bug In Basket Where Adding, Updating And Deleteing Adds Miltiple Rows
+
 
 # region := Setup
 menus = {

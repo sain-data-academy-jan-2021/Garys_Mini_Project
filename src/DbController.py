@@ -4,6 +4,8 @@ from pymysql import converters
 import pymysql.cursors
 from pymysql import NULL
 
+from .file_system import log
+
 
 class DbController():
     
@@ -31,22 +33,37 @@ class DbController():
     @classmethod
     def __execute(cls, sql: str) -> list[dict[Any, Any]]:
         with cls.connection.cursor() as cursor:
-            cursor.execute(sql)
-
-            return cursor.fetchall() #type: ignore
+            log('debug', sql)
+            
+            try:
+                cursor.execute(sql)
+                return cursor.fetchall() #type: ignore
+            except Exception as err:
+                log('error', str(err))
+                print(
+                    f'\u001b[37;1m\u001b[41;1mUnable To Process Request. Check Log For Details\u001b[0m')
+                input()
+                return [{'':'error'}]
     
     @classmethod
-    def __escape_seq(cls, seq: Sequence, parnes: bool =True) -> str:
+    def __escape_seq(cls, seq: Sequence, parens: bool =True) -> str:
         fields_string = ''
-        if parnes:
+        if parens:
             fields_string += '('
         for field in seq:
             fields_string += f'{field}, '
         fields_string = fields_string[0:-2]
-        if parnes:
+        if parens:
             fields_string += ')'
         
         return fields_string
+    
+    @classmethod
+    def __escape_alias(cls, field: str) -> str:
+        if 'AS' in field:
+            index = field.index('AS')
+            return field[:index]
+        return field
     
     @classmethod
     def close(cls) -> None:
@@ -136,12 +153,12 @@ class DbController():
     
     @classmethod
     def get_join(cls, fields: list[str], source: str, target: str, condition: str) -> list[dict[Any, Any]]:
-        query = f'SELECT {cls.__escape_seq(fields, parnes=False)} FROM {source} LEFT OUTER JOIN {target} ON {condition}'
+        query = f'SELECT {cls.__escape_seq(fields, parens=False)} FROM {source} LEFT OUTER JOIN {target} ON {condition}'
         return cls.__execute(query)
 
     @classmethod
     def get_joins(cls, fields: list[str], source: str, targets: list[str], conditions: list[str], type: str ='LEFT OUTER', order: str ='') -> list[dict[Any, Any]]:
-        query = f'SELECT {cls.__escape_seq(fields, parnes=False)} FROM {source} '
+        query = f'SELECT {cls.__escape_seq(fields, parens=False)} FROM {source} '
         assert len(targets) == len(conditions)
         for i in range(len(targets)):
             query += f'{type} JOIN {targets[i]} ON {conditions[i]} '
@@ -150,7 +167,7 @@ class DbController():
     
     @classmethod
     def get_joins_where(cls, fields: list[str], source: str, targets: list[str], conditions: list[str], where: str, type: str = 'LEFT OUTER', order: str = '') -> list[dict[Any, Any]]:
-        query = f'SELECT {cls.__escape_seq(fields, parnes=False)} FROM {source} '
+        query = f'SELECT {cls.__escape_seq(fields, parens=False)} FROM {source} '
         assert len(targets) == len(conditions)
         for i in range(len(targets)):
             query += f'{type} JOIN {targets[i]} ON {conditions[i]} '
@@ -164,6 +181,19 @@ class DbController():
         for i in range(len(fields)):
             query += f'{fields[i]} LIKE "%{term}%" '
             if i < len(fields) - 1:
+                query += 'OR '
+        return cls.__execute(query)
+    
+    @classmethod
+    def search_joined_table(cls, table: str, term: str,fields: list[str], targets: list[str], conditions: list[str]) -> list[dict[Any, Any]]:
+        query = f'SELECT {cls.__escape_seq(fields, parens=False)} FROM {table} '
+        assert len(targets) == len(conditions)
+        for i in range(len(targets)):
+            query += f'LEFT OUTER JOIN {targets[i]} ON {conditions[i]} '
+        query += 'WHERE '
+        for i in range(len(fields)):
+            query += f'{cls.__escape_alias(fields[i])} LIKE "%{term}%" '
+            if i < len(fields) -1:
                 query += 'OR '
         return cls.__execute(query)
         
