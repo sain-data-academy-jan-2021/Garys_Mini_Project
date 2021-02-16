@@ -2,6 +2,7 @@ import os
 from typing import Any
 from dotenv import load_dotenv
 from pymysql import NULL
+import matplotlib.pyplot as plt
 
 from .DbController import DbController
 from .cli import clear, dicts_to_table, fmt_string, get_validated_input, list_to_table, validated_input
@@ -584,9 +585,45 @@ def search_table(table: str):
         print(fmt_string('No Results Found', fg='White', bg='Red'))
     input(fmt_string('Press Enter To Continue', fg='Green'))
 
+#region :=Reports
+def get_summary_by_status():
+    sum = DbController.get_order_status_summary()
+    labels = [item['status'] for item in sum]
+    total = 0
+    for item in sum:
+        total += item['count']
+    sizes = [item['count']/total for item in sum]    
+    fig1, ax1 = plt.subplots()
+    ax1.pie(sizes, labels=labels, autopct='%1.1f%%', shadow=True, startangle=90) #type: ignore
+    ax1.axis('equal') # type: ignore
+    plt.show()
 
-# TODO: Fix Bug In Basket Where Adding, Updating And Deleteing Adds Miltiple Rows
 
+def get_unassigned_orders():
+    clear()
+    print(fmt_string('Viewing: UNASSIGNED ORDERS', fg='Cyan'))
+    data = DbController.get_unassigned_orders()
+    if len(data) > 0:
+        dicts_to_table(data)
+        input(fmt_string('Press ENTER To Continue', fg='Green'))
+
+
+def get_order_totals():
+    data = DbController.get_order_totals()
+    clear()
+    print(fmt_string('Viewing: TOTALS BY ORDER', fg='Cyan'))
+    dicts_to_table(data)
+    input(fmt_string('Press ENTER To Continue', fg='Green'))
+
+
+def get_free_couriers():
+    clear()
+    print(fmt_string('Viewing: FREE COURIERS', fg='Cyan'))
+    data = DbController.get_unassigned_couriers()
+    if len(data) > 0:
+        dicts_to_table(data)
+    input(fmt_string('Press ENTER To Continue', fg='Green'))
+#endregion :=Reports
 
 # region := Setup
 menus = {
@@ -597,13 +634,16 @@ menus = {
                   '[1] 🧇 Product Maintainance',
                   '[2] 🚚 Courier Maintainance',
                   '[3] 📋 Order Maintainance',
-                  '[4] ⚙ System Maintainance'
+                  '[4] 📊 Reporting',
+                  'Separator',
+                  '[5] ⚙ System Maintainance'
                   ],
         'handlers': [exit,
                      lambda: show_menu('product_menu'),
                      lambda: show_menu('courier_menu'),
                      lambda: show_menu('orders'),
-                     lambda: show_menu('system_maintainance_menu'),
+                     lambda: show_menu('reports'),
+                     lambda: show_menu('system_maintainance_menu')
                      ]
     },
     'product_menu': {
@@ -672,6 +712,24 @@ menus = {
         'handlers': [
             lambda: show_menu('main_menu'),
             not_implemented
+        ]
+    },
+    'reports':{
+        'title': 'reports',
+        'items': [
+            '[0] ⏪ Return To Main Menu',
+            'Separator',
+            '[1] Status Summary',
+            '[2] Order Totals',
+            '[3] Unassigned Orders',
+            '[4] View Free Couriers'
+        ],
+        'handlers':[
+            lambda: show_menu('main_menu'),
+            get_summary_by_status,
+            get_order_totals,
+            get_unassigned_orders,
+            get_free_couriers
         ]
     }
 }
