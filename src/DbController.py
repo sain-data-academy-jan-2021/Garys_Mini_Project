@@ -27,7 +27,7 @@ class DbController():
                 cursorclass=pymysql.cursors.DictCursor,
                 conv=conv
             )
-            
+             
         return cls.__instance
 
     @classmethod
