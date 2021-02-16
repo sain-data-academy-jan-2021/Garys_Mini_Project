@@ -8,7 +8,7 @@ from .file_system import log
 
 
 class DbController():
-    
+     
     __instance = None
 
     def __new__(cls, host: str, user: str, password: str, database: str, autocommit: bool = True):
