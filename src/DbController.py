@@ -33,7 +33,7 @@ class DbController():
     @classmethod
     def __execute(cls, sql: str) -> list[dict[Any, Any]]:
         with cls.connection.cursor() as cursor:
-            log('debug', sql)
+            log('info', sql)
             
             try:
                 cursor.execute(sql)

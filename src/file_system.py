@@ -5,7 +5,7 @@ import json
 from csv import DictReader, DictWriter
 
 base_path = Path(__file__).parent.parent
-LOG_LEVELS = ['warning', 'error', 'critical']
+LOG_LEVELS = ['warning', 'error', 'critical', 'info', 'debug']
 
 
 def get_absolute_path(filepath: Any = '') -> Any:

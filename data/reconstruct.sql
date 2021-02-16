@@ -28,7 +28,6 @@ area VARCHAR(100) NOT NULL,
 phone VARCHAR(15) NOT NULL,
 courier INT,
 status INT NOT NULL,
-basket INT,
 PRIMARY KEY (id)
 );
 
@@ -153,17 +152,17 @@ VALUES
 INSERT INTO `orders`
     (id, name, address, area, phone, courier, status, basket)
 VALUES
-    (1, "rebecca k ingram","128 north promenade","hr18pa","07033918495", NULL, 1, 1),
-    (2, "niamh l mahmood","140 thompsons lane","ph28wn","07031221095", 6, 1, 2),
-    (3, "declan j lane","102 newmarket road","de562ad","07705692817", 1, 2, 3),
-    (4, "poppy d clements","116 glenurquhart road","yo71fh","07858838750", NULL, 2, 4),
-    (5, "maisie s read","74 cheriton road","dl61hy","07711870333", 3, 2, 5),
-    (6, "joe p bloggs","1 some town","wh12er","07514875451", 4, 2, 6),
-    (7, "sean k holden","110 redcliffe way","b603rq","07930379341", 8, 3, 7),
-    (8, "kai m chamberlain","82 shore street","ca58xz","07027310489", 2, 3, 8),
-    (9, "john f doe","100 someplace","ts149ae","01635154874", 2, 4, 9),
-    (10, "connor c stewart","75 mill lane","dg91hd","07001194616", 6, 5, 10),
-    (11, "alice d bloggs","24 grove green road","ec19tl","07854875414", 3, 6, 10);
+    (1, "rebecca k ingram","128 north promenade","hr18pa","07033918495", NULL, 1),
+    (2, "niamh l mahmood","140 thompsons lane","ph28wn","07031221095", 6, 1,
+    (3, "declan j lane","102 newmarket road","de562ad","07705692817", 1, 2),
+    (4, "poppy d clements","116 glenurquhart road","yo71fh","07858838750", NULL, 2),
+    (5, "maisie s read","74 cheriton road","dl61hy","07711870333", 3, 2),
+    (6, "joe p bloggs","1 some town","wh12er","07514875451", 4, 2),
+    (7, "sean k holden","110 redcliffe way","b603rq","07930379341", 8, 3),
+    (8, "kai m chamberlain","82 shore street","ca58xz","07027310489", 2, 3),
+    (9, "john f doe","100 someplace","ts149ae","01635154874", 2, 4),
+    (10, "connor c stewart","75 mill lane","dg91hd","07001194616", 6, 5),
+    (11, "alice d bloggs","24 grove green road","ec19tl","07854875414", 3, 6);
     
 
 INSERT INTO `status`

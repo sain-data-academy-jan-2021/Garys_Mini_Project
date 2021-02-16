@@ -224,14 +224,15 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
             for key, value in dtn.items():
 
                 if key == 'status':
-                    if type(value) == str:
-                        status_col = DbController.get_all_rows_where(
-                            'status', 'code', value)[0]
-                    else:
-                        status_col = DbController.get_all_rows_where(
-                            'status', 'id', value)[0]
+                    status_col = order_status[value]
+                    # if type(value) == str:
+                        # status_col = DbController.get_all_rows_where(
+                        #     'status', 'code', value)[0]
+                    # else:
+                        # status_col = DbController.get_all_rows_where(
+                        #     'status', 'id', value)[0]
                         
-                    row.append(fmt_string(value, fg=status_col['style']))
+                    row.append(fmt_string(value, fg=status_col))
                 elif key != 'basket':
                     if type(value) == float:
                         row.append('%.2f' % value)
