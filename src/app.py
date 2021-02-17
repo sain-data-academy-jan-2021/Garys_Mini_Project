@@ -15,7 +15,7 @@ def not_implemented():
 
 
 def get_order_data(sort: str = 'o.status') -> list[dict[Any, Any]]:
-    return DbController.get_joins(
+    return DbController.instance().get_joins(
         fields=['o.id', 'o.name', 'o.address',
                 'o.area', 'o.phone', 'courier.name AS Courier', 's.code AS status'],
         source='orders o',
@@ -53,7 +53,7 @@ def print_data_view(key: str) -> None:  # type: ignore
         data = get_order_data()
 
         current_ids = [item['id']
-                       for item in DbController.get_column(key, 'id')]
+                       for item in DbController.instance().get_column(key, 'id')]
 
         while is_looping:
             clear()
@@ -71,7 +71,7 @@ def print_data_view(key: str) -> None:  # type: ignore
                 list_to_table(sort_on_keys, 'Available Sorts', enumerate=True)
                 sort_key = get_validated_input(
                     'What Would You Like To Sort By [id]? ', int, fg='Blue', min_value=1, max_value=len(sort_on_keys), cancel_on=0)
-                data = get_order_data(sort_key if sort_key is not 7 else 'o.status')
+                data = get_order_data(sort_key if sort_key != 7 else 'o.status')
                 continue
 
             for order in data:
@@ -79,7 +79,7 @@ def print_data_view(key: str) -> None:  # type: ignore
                     clear()
                     show_order_detail_menu(order)
     else:
-        data = DbController.get_all_rows(key)
+        data = DbController.instance().get_all_rows(key)
         is_looping = True
         while is_looping:
             clear()
@@ -97,12 +97,12 @@ def print_data_view(key: str) -> None:  # type: ignore
                 list_to_table(sort_on_keys, 'Available Sorts', enumerate=True)
                 sort_key = get_validated_input(
                     'How Would You Like To Sort By [id]? ', int, fg='Blue', min_value=1, max_value=len(sort_on_keys), cancel_on=0)
-                data = DbController.get_all_rows(key, order=f'ORDER BY {sort_key}')
+                data = DbController.instance().get_all_rows(key, order=f'ORDER BY {sort_key}')
                 continue
 
 
 def show_add_item_menu(get_key: str) -> None:
-    data = DbController.get_all_rows(get_key)
+    data = DbController.instance().get_all_rows(get_key)
     # Use the first element in the list to establish the key structure of the data
     items = data[0].items()
     # Get a list of current names to ensure that no duplicates are passed -> passed to unique
@@ -130,7 +130,7 @@ def show_add_item_menu(get_key: str) -> None:
 
                 new_dict[key] = value
 
-        DbController.insert(get_key, new_dict)
+        DbController.instance().insert(get_key, new_dict)
 
         clear()
         dicts_to_table(data)
@@ -140,7 +140,7 @@ def show_add_item_menu(get_key: str) -> None:
 
 
 def show_update_item_menu(get_key: str) -> None:
-    data = DbController.get_all_rows(get_key)
+    data = DbController.instance().get_all_rows(get_key)
     items = data[0].items()
     current_ids = [item['id'] for item in data]
 
@@ -168,7 +168,7 @@ def show_update_item_menu(get_key: str) -> None:
 
                 new_dict[key] = value
 
-        DbController.update(get_key, id, new_dict)
+        DbController.instance().update(get_key, id, new_dict)
         dicts_to_table(data)
 
         if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
@@ -176,7 +176,7 @@ def show_update_item_menu(get_key: str) -> None:
 
 
 def show_delete_item_menu(get_key: str) -> None:
-    data = DbController.get_all_rows(get_key)
+    data = DbController.instance().get_all_rows(get_key)
     current_ids = [item['id'] for item in data]
 
     is_looping = True
@@ -189,10 +189,10 @@ def show_delete_item_menu(get_key: str) -> None:
         if not item_id:
             return
 
-        DbController.delete(get_key, item_id)
+        DbController.instance().delete(get_key, item_id)
 
         clear()
-        data = DbController.get_all_rows(get_key)
+        data = DbController.instance().get_all_rows(get_key)
         dicts_to_table(data)
 
         if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
@@ -241,7 +241,7 @@ def show_add_order_menu() -> None:
         if input(fmt_string('Does This Look Correct?[y/n]\n', fg='Green')).lower() == 'n':
             continue
 
-        DbController.insert('orders', new_dict)
+        DbController.instance().insert('orders', new_dict)
 
         clear()
 
@@ -256,7 +256,7 @@ def show_add_order_menu() -> None:
 def show_order_detail_menu(order) -> None:
     for k, v in order.items():
         if k == 'status':
-            col = DbController.get_all_rows_where(
+            col = DbController.instance().get_all_rows_where(
                 'status', 'code', v)[0]['style']
             print(fmt_string(f'{str(k).title()}: ', fg='Blue'),
                   fmt_string(f'{str(v).title()}\n', fg=col))
@@ -264,8 +264,8 @@ def show_order_detail_menu(order) -> None:
             print(fmt_string(f'{str(k).title()}: ',
                              fg='Blue'), f'{str(v).title()}\n')
 
-    items = DbController.get_all_rows_where('basket', 'order_id', order['id'])
-    items = DbController.get_joins_where(
+    items = DbController.instance().get_all_rows_where('basket', 'order_id', order['id'])
+    items = DbController.instance().get_joins_where(
         fields=['b.quantity AS "#x"', 'p.name',
                 'b.quantity * p.price AS "Sub Total"'],
         source='orders o',
@@ -287,7 +287,7 @@ def show_order_detail_menu(order) -> None:
 def show_update_status_menu() -> None:
     data = get_order_data()
 
-    status_list = DbController.get_all_rows('status')
+    status_list = DbController.instance().get_all_rows('status')
 
     current_ids = [order['id'] for order in data]
     is_looping = True
@@ -301,8 +301,8 @@ def show_update_status_menu() -> None:
             is_looping = False
             continue
 
-        status_list = DbController.get_all_rows('status')
-        current_row = DbController.get_all_rows_where('orders', 'id', index)[0]
+        status_list = DbController.instance().get_all_rows('status')
+        current_row = DbController.instance().get_all_rows_where('orders', 'id', index)[0]
 
         clear()
         dicts_to_table(data)
@@ -318,7 +318,7 @@ def show_update_status_menu() -> None:
 
         current_row['status'] = status_index
 
-        DbController.update('orders', index, current_row)
+        DbController.instance().update('orders', index, current_row)
 
         data = get_order_data()
         
@@ -350,7 +350,7 @@ def show_update_order_menu() -> None:
 
         clear()
 
-        order = DbController.get_joins_where(
+        order = DbController.instance().get_joins_where(
             fields=['o.id', 'o.name', 'o.address',
                     'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
             source='orders o',
@@ -365,7 +365,7 @@ def show_update_order_menu() -> None:
             key = key.lower()
             if key != 'id':
                 if key == 'status':
-                    status_list = DbController.get_all_rows('status')
+                    status_list = DbController.instance().get_all_rows('status')
                     status_ids = [status['id'] for status in status_list]
 
                     clear()
@@ -379,11 +379,11 @@ def show_update_order_menu() -> None:
                     value = status_index
 
                     if not status_index:
-                        value = DbController.get_rows_where(
+                        value = DbController.instance().get_rows_where(
                             'orders', 'status', 'id', id)[0]['status']
 
                 elif key == 'courier':
-                    courier_list = DbController.get_all_rows('couriers')
+                    courier_list = DbController.instance().get_all_rows('couriers')
                     courier_ids = [courier['id'] for courier in courier_list]
 
                     clear()
@@ -393,7 +393,7 @@ def show_update_order_menu() -> None:
                         f'Please Select {key.title()}: ', int, fg='Blue', is_present=courier_ids, cancel_on='0', cancel_text='SKIP')
 
                     if not value:
-                        value = DbController.get_rows_where(
+                        value = DbController.instance().get_rows_where(
                             'orders', 'courier', 'id', id)[0]['courier']
 
                 else:
@@ -405,7 +405,7 @@ def show_update_order_menu() -> None:
 
                 new_dict[key] = value
 
-        DbController.update('orders', id, new_dict)
+        DbController.instance().update('orders', id, new_dict)
         select_order_items(id)
         
         clear()
@@ -431,7 +431,7 @@ def show_delete_order_menu() -> None:
         if not id:
             return
 
-        DbController.delete('orders', id)
+        DbController.instance().delete('orders', id)
 
         data = get_order_data()
         
@@ -443,7 +443,7 @@ def show_delete_order_menu() -> None:
 
 
 def select_order_items(order_id) -> None:
-    current_basket = list(DbController.get_joins_where(
+    current_basket = list(DbController.instance().get_joins_where(
         source='basket b',
         fields=['p.id', 'p.name', 'b.quantity'],
         targets=['products p'],
@@ -451,11 +451,11 @@ def select_order_items(order_id) -> None:
         where=f'b.order_id = {order_id}'
     ))
 
-    current_rows = DbController.get_all_rows_where(
+    current_rows = DbController.instance().get_all_rows_where(
         'basket', 'order_id', order_id)
     current_ids = [item['item'] for item in current_rows]
 
-    catagories = DbController.get_all_rows('catagories')
+    catagories = DbController.instance().get_all_rows('catagories')
     catagory_ids = [cat['id'] for cat in catagories]
 
     to_update = []
@@ -495,7 +495,7 @@ def select_order_items(order_id) -> None:
             
                 dicts_to_table(current_basket)
 
-            products = DbController.get_rows_where(
+            products = DbController.instance().get_rows_where(
                 'products', 'id, name', 'catagory', catagory)
             product_ids = [item['id'] for item in products]
 
@@ -552,15 +552,15 @@ def select_order_items(order_id) -> None:
                     del to_insert[i]
 
     for record in to_update:
-        DbController.update_where('basket', ['order_id', 'item'], [
+        DbController.instance().update_where('basket', ['order_id', 'item'], [
                                   order_id, record['item']], record)
 
     for record in to_delete:
-        DbController.delete_where('basket', ['order_id', 'item'], [
+        DbController.instance().delete_where('basket', ['order_id', 'item'], [
                                   order_id, record['item']])
 
     for record in to_insert:
-        DbController.insert('basket', record)
+        DbController.instance().insert('basket', record)
 
 
 def search_table(table: str):
@@ -568,7 +568,7 @@ def search_table(table: str):
     term = get_validated_input('Please Enter A Search Term: ', fg='Blue')
     
     if table == 'orders':
-        data = DbController.search_joined_table(
+        data = DbController.instance().search_joined_table(
             table='orders o',
             term=term,
             fields=['o.id', 'o.name', 'o.address',
@@ -577,7 +577,7 @@ def search_table(table: str):
             conditions=['courier.id = o.courier', 's.id = o.status']
         )
     else:
-        data = DbController.search_table(table, term)
+        data = DbController.instance().search_table(table, term)
     
     if len(data) > 0:
         dicts_to_table(data)
@@ -587,7 +587,7 @@ def search_table(table: str):
 
 #region :=Reports
 def get_summary_by_status():
-    sum = DbController.get_order_status_summary()
+    sum = DbController.instance().get_order_status_summary()
     labels = [item['status'] for item in sum]
     total = 0
     for item in sum:
@@ -602,14 +602,14 @@ def get_summary_by_status():
 def get_unassigned_orders():
     clear()
     print(fmt_string('Viewing: UNASSIGNED ORDERS', fg='Cyan'))
-    data = DbController.get_unassigned_orders()
+    data = DbController.instance().get_unassigned_orders()
     if len(data) > 0:
         dicts_to_table(data)
         input(fmt_string('Press ENTER To Continue', fg='Green'))
 
 
 def get_order_totals():
-    data = DbController.get_order_totals()
+    data = DbController.instance().get_order_totals()
     clear()
     print(fmt_string('Viewing: TOTALS BY ORDER', fg='Cyan'))
     dicts_to_table(data)
@@ -619,7 +619,7 @@ def get_order_totals():
 def get_free_couriers():
     clear()
     print(fmt_string('Viewing: FREE COURIERS', fg='Cyan'))
-    data = DbController.get_unassigned_couriers()
+    data = DbController.instance().get_unassigned_couriers()
     if len(data) > 0:
         dicts_to_table(data)
     input(fmt_string('Press ENTER To Continue', fg='Green'))
@@ -738,12 +738,12 @@ menus = {
 menu_state = 'main_menu'
 
 if __name__ == '__main__':
-    host = os.environ.get("mysql_host")
+    host = os.environ.get("mysql_host") 
     user = os.environ.get("mysql_user")
     password = os.environ.get("mysql_pass")
     database = os.environ.get("mysql_db")
-    DbController(host, user, password, database)  # type: ignore
+    DbController(host, user, password, database) # type: ignore
     while menu_state:
         show_menu(menu_state)
-    DbController.close()
+    DbController.instance().close()
 # endregion :=Setup
