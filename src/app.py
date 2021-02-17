@@ -79,7 +79,7 @@ def print_data_view(key: str) -> None:  # type: ignore
                     clear()
                     show_order_detail_menu(order)
     else:
-        data = DbController.instance().get_all_rows(key)
+        data = DbController.instance().get_all_rows(key, '*')
         is_looping = True
         while is_looping:
             clear()
@@ -97,12 +97,12 @@ def print_data_view(key: str) -> None:  # type: ignore
                 list_to_table(sort_on_keys, 'Available Sorts', enumerate=True)
                 sort_key = get_validated_input(
                     'How Would You Like To Sort By [id]? ', int, fg='Blue', min_value=1, max_value=len(sort_on_keys), cancel_on=0)
-                data = DbController.instance().get_all_rows(key, order=f'ORDER BY {sort_key}')
+                data = DbController.instance().get_all_rows(key, '*', order=f'ORDER BY {sort_key}')
                 continue
 
 
 def show_add_item_menu(get_key: str) -> None:
-    data = DbController.instance().get_all_rows(get_key)
+    data = DbController.instance().get_all_rows(get_key, '*')
     # Use the first element in the list to establish the key structure of the data
     items = data[0].items()
     # Get a list of current names to ensure that no duplicates are passed -> passed to unique
@@ -140,7 +140,7 @@ def show_add_item_menu(get_key: str) -> None:
 
 
 def show_update_item_menu(get_key: str) -> None:
-    data = DbController.instance().get_all_rows(get_key)
+    data = DbController.instance().get_all_rows(get_key, '*')
     items = data[0].items()
     current_ids = [item['id'] for item in data]
 
@@ -176,7 +176,7 @@ def show_update_item_menu(get_key: str) -> None:
 
 
 def show_delete_item_menu(get_key: str) -> None:
-    data = DbController.instance().get_all_rows(get_key)
+    data = DbController.instance().get_all_rows(get_key, '*')
     current_ids = [item['id'] for item in data]
 
     is_looping = True
@@ -192,7 +192,7 @@ def show_delete_item_menu(get_key: str) -> None:
         DbController.instance().delete(get_key, item_id)
 
         clear()
-        data = DbController.instance().get_all_rows(get_key)
+        data = DbController.instance().get_all_rows(get_key, '*')
         dicts_to_table(data)
 
         if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
@@ -256,15 +256,16 @@ def show_add_order_menu() -> None:
 def show_order_detail_menu(order) -> None:
     for k, v in order.items():
         if k == 'status':
-            col = DbController.instance().get_all_rows_where(
-                'status', 'code', v)[0]['style']
+            col = DbController.instance().get_rows_where(
+                '*','status', 'code', v)[0]['style']
             print(fmt_string(f'{str(k).title()}: ', fg='Blue'),
                   fmt_string(f'{str(v).title()}\n', fg=col))
         else:
             print(fmt_string(f'{str(k).title()}: ',
                              fg='Blue'), f'{str(v).title()}\n')
 
-    items = DbController.instance().get_all_rows_where('basket', 'order_id', order['id'])
+    items = DbController.instance().get_rows_where(
+        '*', 'basket', 'order_id', order['id'])
     items = DbController.instance().get_joins_where(
         fields=['b.quantity AS "#x"', 'p.name',
                 'b.quantity * p.price AS "Sub Total"'],
@@ -287,7 +288,7 @@ def show_order_detail_menu(order) -> None:
 def show_update_status_menu() -> None:
     data = get_order_data()
 
-    status_list = DbController.instance().get_all_rows('status')
+    status_list = DbController.instance().get_all_rows('status', '*')
 
     current_ids = [order['id'] for order in data]
     is_looping = True
@@ -301,8 +302,9 @@ def show_update_status_menu() -> None:
             is_looping = False
             continue
 
-        status_list = DbController.instance().get_all_rows('status')
-        current_row = DbController.instance().get_all_rows_where('orders', 'id', index)[0]
+        status_list = DbController.instance().get_all_rows('status', '*')
+        current_row = DbController.instance().get_rows_where(
+            '*', 'orders', 'id', index)[0]
 
         clear()
         dicts_to_table(data)
@@ -365,7 +367,7 @@ def show_update_order_menu() -> None:
             key = key.lower()
             if key != 'id':
                 if key == 'status':
-                    status_list = DbController.instance().get_all_rows('status')
+                    status_list = DbController.instance().get_all_rows('status', '*')
                     status_ids = [status['id'] for status in status_list]
 
                     clear()
@@ -383,7 +385,7 @@ def show_update_order_menu() -> None:
                             'orders', 'status', 'id', id)[0]['status']
 
                 elif key == 'courier':
-                    courier_list = DbController.instance().get_all_rows('couriers')
+                    courier_list = DbController.instance().get_all_rows('couriers', '*')
                     courier_ids = [courier['id'] for courier in courier_list]
 
                     clear()
@@ -451,11 +453,11 @@ def select_order_items(order_id) -> None:
         where=f'b.order_id = {order_id}'
     ))
 
-    current_rows = DbController.instance().get_all_rows_where(
-        'basket', 'order_id', order_id)
+    current_rows = DbController.instance().get_rows_where(
+        '*', 'basket', 'order_id', order_id)
     current_ids = [item['item'] for item in current_rows]
 
-    catagories = DbController.instance().get_all_rows('catagories')
+    catagories = DbController.instance().get_all_rows('catagories', '*')
     catagory_ids = [cat['id'] for cat in catagories]
 
     to_update = []
@@ -743,7 +745,16 @@ if __name__ == '__main__':
     password = os.environ.get("mysql_pass")
     database = os.environ.get("mysql_db")
     DbController(host, user, password, database) # type: ignore
+    
+    if not DbController.instance().connection:
+        log('critical', 'No Connection To Source Could Be Established')
+        print(
+            f'\u001b[37;1m\u001b[41;1mNo Connection To Source Could Be Established. Please Review Config\u001b[0m')
+        input()
+        exit()
+    
     while menu_state:
         show_menu(menu_state)
+        
     DbController.instance().close()
 # endregion :=Setup
