@@ -52,6 +52,7 @@ def print_data_view(key: str) -> None:
         is_looping = True
         data = get_order_data()
 
+        #Get ID's of current orders to ensure that a valid one is selected
         current_ids = [item['id']
                        for item in DbController.instance().get_column(key, 'id')]
 
@@ -67,10 +68,12 @@ def print_data_view(key: str) -> None:
             if index == -1:
                 clear()
                 dicts_to_table(data, paginate=True)
+                #Get a list of the current coloum names to be used in a sort order
                 sort_on_keys = list(data[0].keys())
                 list_to_table(sort_on_keys, 'Available Sorts', enumerate=True)
                 sort_key = get_validated_input(
                     'What Would You Like To Sort By [id]? ', int, fg='Blue', min_value=1, max_value=len(sort_on_keys), cancel_on=0)
+                #Status sorts on id not named string so set this if status is selected
                 data = get_order_data(sort_key if sort_key != 7 else 'o.status')
                 continue
 
@@ -93,10 +96,12 @@ def print_data_view(key: str) -> None:
 
             if index == 1:
                 clear()
+                #Get a list of the current column names to be used in a sort order
                 sort_on_keys = [key for key in data[0]]
                 list_to_table(sort_on_keys, 'Available Sorts', enumerate=True)
                 sort_key = get_validated_input(
                     'How Would You Like To Sort By [id]? ', int, fg='Blue', min_value=1, max_value=len(sort_on_keys), cancel_on=0)
+                #Refresh data with selected sort order
                 data = DbController.instance().get_all_rows(key, '*', order=f'ORDER BY {sort_key}')
                 continue
 
@@ -112,12 +117,14 @@ def show_add_item_menu(get_key: str) -> None:
     while is_looping:
         clear()
         dicts_to_table(data)
+        #build a dictionary which will be passed to the DbController to be actioned
         new_dict = {}
         id = max([item['id'] for item in data]) + 1
         new_dict['id'] = id
 
         for key, value in items:
             if key != 'id' and key != 'basket':
+                #Name must also be unique so check that this is the case otherwise take any valid input
                 if key == 'name':
                     value = get_validated_input(
                         f'Please Enter {key.replace("_"," ").title()}: ', type(value), fg='Blue', min_length=1, unique=current_names, cancel_on='0')
@@ -141,14 +148,16 @@ def show_add_item_menu(get_key: str) -> None:
 
 def show_update_item_menu(get_key: str) -> None:
     data = DbController.instance().get_all_rows(get_key, '*')
+    # Use the first element in the list to establish the key structure of the data
     items = data[0].items()
+    # Get a list of current id to ensure a valid one is selected
     current_ids = [item['id'] for item in data]
 
     is_looping = True
     while is_looping:
         clear()
         dicts_to_table(data)
-
+        #build a dictionary which will be passed to the DbController to be actioned
         new_dict = {}
         id = get_validated_input('Please Enter An ID To Edit: ', int,
                                  fg='Blue', min_length=1, is_present=current_ids, cancel_on='0')
@@ -177,6 +186,7 @@ def show_update_item_menu(get_key: str) -> None:
 
 def show_delete_item_menu(get_key: str) -> None:
     data = DbController.instance().get_all_rows(get_key, '*')
+    # Get a list of current id to ensure a valid one is selected
     current_ids = [item['id'] for item in data]
 
     is_looping = True
@@ -191,6 +201,7 @@ def show_delete_item_menu(get_key: str) -> None:
 
         DbController.instance().delete(get_key, item_id)
 
+        #refresh data to see changes
         clear()
         data = DbController.instance().get_all_rows(get_key, '*')
         dicts_to_table(data)
@@ -201,7 +212,7 @@ def show_delete_item_menu(get_key: str) -> None:
 
 def show_add_order_menu() -> None:
     display_data = get_order_data()
-
+    # Use the first element in the list to establish the key structure of the data
     items = display_data[0].items()
 
     is_looping = True
@@ -212,6 +223,7 @@ def show_add_order_menu() -> None:
         for key, value in items:
             key = key.lower()
             if key != 'id':
+                #These 2 will be set to their default of NULL
                 if key == 'courier' or key == 'status':
                     continue
 
@@ -227,6 +239,7 @@ def show_add_order_menu() -> None:
 
                 new_dict[key] = new_value
 
+            #Show the order as it is being built to allow for review before insertion
             clear()
             dicts_to_table(display_data)
             print(fmt_string('\nCreating New Order...', fg='Cyan'))
@@ -236,6 +249,7 @@ def show_add_order_menu() -> None:
         clear()
         dicts_to_table(display_data)
         print(fmt_string('\nOrder Complete!', fg='Green'))
+        #Show the completed new order with the 2 default keys excluded
         dicts_to_table([new_dict], headers=list(display_data[0].keys())[1:-2])
 
         if input(fmt_string('Does This Look Correct?[y/n]\n', fg='Green')).lower() == 'n':
@@ -254,6 +268,7 @@ def show_add_order_menu() -> None:
 
 
 def show_order_detail_menu(order) -> None:
+    #Use the data recived in view_order to print -> use the `status` tables style value to colour by status
     for k, v in order.items():
         if k == 'status':
             col = DbController.instance().get_rows_where(
@@ -264,8 +279,7 @@ def show_order_detail_menu(order) -> None:
             print(fmt_string(f'{str(k).title()}: ',
                              fg='Blue'), f'{str(v).title()}\n')
 
-    items = DbController.instance().get_rows_where(
-        '*', 'basket', 'order_id', order['id'])
+    #Get the orders current basket from the `basket` table and add a total price per item on
     items = DbController.instance().get_joins_where(
         fields=['b.quantity AS "#x"', 'p.name',
                 'b.quantity * p.price AS "Sub Total"'],
@@ -276,8 +290,8 @@ def show_order_detail_menu(order) -> None:
         type='INNER'
     )
 
-    if len(items) > 0:  # type: ignore
-        dicts_to_table(items)  # type: ignore
+    if len(items) > 0:  
+        dicts_to_table(items) 
     else:
         print(fmt_string('Order: ', fg='Blue'),
               fmt_string('Basket Is Empty', fg='Red'))
@@ -289,7 +303,7 @@ def show_update_status_menu() -> None:
     data = get_order_data()
 
     status_list = DbController.instance().get_all_rows('status', '*')
-
+    #
     current_ids = [order['id'] for order in data]
     is_looping = True
     while is_looping:
@@ -746,6 +760,7 @@ if __name__ == '__main__':
     database = os.environ.get("mysql_db")
     DbController(host, user, password, database) # type: ignore
     
+    #If you can't connect to the DB, log, inform user and close the app
     if not DbController.instance().connection:
         log('critical', 'No Connection To Source Could Be Established')
         print(
