@@ -1,6 +1,0 @@
-Some
-Test
-Data
-In
-A
-File
