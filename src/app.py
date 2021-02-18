@@ -272,7 +272,7 @@ def show_order_detail_menu(order) -> None:
     for k, v in order.items():
         if k == 'status':
             col = DbController.instance().get_rows_where(
-                '*','status', 'code', v)[0]['style']
+                'status', '*', 'code', v)[0]['style']
             print(fmt_string(f'{str(k).title()}: ', fg='Blue'),
                   fmt_string(f'{str(v).title()}\n', fg=col))
         else:
@@ -468,7 +468,7 @@ def select_order_items(order_id) -> None:
     ))
 
     current_rows = DbController.instance().get_rows_where(
-        '*', 'basket', 'order_id', order_id)
+        'basket', '*', 'order_id', order_id)
     current_ids = [item['item'] for item in current_rows]
 
     catagories = DbController.instance().get_all_rows('catagories', '*')
