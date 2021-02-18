@@ -3,8 +3,6 @@ from typing import Any
 from terminaltables import SingleTable
 from math import ceil
 
-from .DbController import DbController
-
 colors = {
     'Black': 30,
     'Red': 31,
@@ -29,66 +27,6 @@ order_status = {
 
 def fmt_string(msg: str, fg: str = 'White', bg: str = 'Unset') -> str:
     return f'\u001b[{colors[fg]};1m\u001b[{colors[bg]+10};1m{msg}\u001b[0m'
-
-
-def print_palette(col: str = 'All') -> None:
-
-    if col == 'All':
-        for fg_col in colors:
-            line = ''
-
-            for bg_col in colors:
-                line += fmt_string(f'[{fg_col}][{bg_col}]',
-                                   fg=fg_col, bg=bg_col)
-
-            print(line)
-
-    else:
-        for fg_col in colors:
-            print(fmt_string(f'[{fg_col}]', fg=fg_col, bg=col))
-
-
-def print_outline(width: int) -> None:
-    print(f"    +{'-' * (width + 8)}+")
-
-
-def print_row(row: str, width: int) -> None:
-
-    if row != 'Separator':
-        print(f"    |{row}{' ' * (width - len(str(row)) + 7)} |")
-    else:
-        print_outline(width)
-
-
-def print_rows(rows: list[Any], width: int) -> None:
-    for row in rows:
-        print_row(row, width)
-
-    print_outline(width)
-
-
-def print_title(name: str, width: int) -> None:
-    print_outline(width)
-    print_row(name.upper(), width)
-    print_outline(width)
-
-
-def get_width(rows: list[Any]) -> int:
-    # Get the len of the longest string in a given table to calculate the needed width of the table
-    if len(rows) != 0:
-        return max(len(str(row)) for row in rows)
-
-    else:
-        return 10
-
-
-def print_table(name: str, rows: list[Any]) -> None:
-    print()
-    width = get_width(rows)
-    width = width if len(name) < width else len(name)
-    print_title(name, width)
-    print_rows(rows, width)
-    print()
 
 
 def clear() -> None:
@@ -199,7 +137,7 @@ def get_validated_input(prompt: str, *types, **options) -> Any:
     return value
 
 
-def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=False, paginate=False) -> None:
+def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=False, paginate=False, **options) -> None:
     table_data = []
     show_headers = []
     if enumerated:
@@ -225,13 +163,6 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
 
                 if key == 'status':
                     status_col = order_status[value]
-                    # if type(value) == str:
-                        # status_col = DbController.get_all_rows_where(
-                        #     'status', 'code', value)[0]
-                    # else:
-                        # status_col = DbController.get_all_rows_where(
-                        #     'status', 'id', value)[0]
-                        
                     row.append(fmt_string(value, fg=status_col))
                 elif key != 'basket':
                     if type(value) == float:
@@ -243,7 +174,7 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
 
     is_looping = True
     total_records = len(table_data)
-    page_length = 20
+    page_length = 20 if 'page_length' not in options else options['page_length']
     current_page = 0
     total_pages = ceil(int(total_records / page_length))
 
@@ -300,8 +231,9 @@ def list_to_table(lst: list[str], title: str, **options) -> None:
         if 'enumerate' in options:
             if options['enumerate']:
                 for idx, _ in enumerate(sub_list):
-                    sub_list[idx] = f' [{i + idx + 1}] {sub_list[idx]}'
-
+                    sub_list[idx] = f'[{i + idx + 1}] {sub_list[idx]}'
+        
+        
         split_lst.append(sub_list)
 
     for sub in split_lst:
