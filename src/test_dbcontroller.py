@@ -13,8 +13,7 @@ class TestSingleton(unittest.TestCase):
         x = DbController('1','2','3','4')
         
         #When / Then
-        self.assertEqual(instance, x)
-
+        self.assertIs(instance, x)
 
 @patch('src.DbController.DbController.execute')
 class TestGetFieldNames(unittest.TestCase):

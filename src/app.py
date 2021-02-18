@@ -47,7 +47,7 @@ def show_menu(menu_name: str) -> None:
     menu['handlers'][menu_option[1]]()
 
 
-def print_data_view(key: str) -> None:  # type: ignore
+def print_data_view(key: str) -> None:
     if key == 'orders':
         is_looping = True
         data = get_order_data()
@@ -152,7 +152,7 @@ def show_update_item_menu(get_key: str) -> None:
         new_dict = {}
         id = get_validated_input('Please Enter An ID To Edit: ', int,
                                  fg='Blue', min_length=1, is_present=current_ids, cancel_on='0')
-
+        
         if not id:
             return
 
@@ -302,9 +302,9 @@ def show_update_status_menu() -> None:
             is_looping = False
             continue
 
-        status_list = DbController.instance().get_all_rows('status', '*')
+        status_list = DbController.instance().get_all_rows('status', 'id, code')
         current_row = DbController.instance().get_rows_where(
-            '*', 'orders', 'id', index)[0]
+            'orders', '*', 'id', index)[0]
 
         clear()
         dicts_to_table(data)
@@ -758,3 +758,5 @@ if __name__ == '__main__':
         
     DbController.instance().close()
 # endregion :=Setup
+
+# pytest --cov-config=.coveragerc --cov-report term:skip-covered --cov=.
