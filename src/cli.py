@@ -165,8 +165,11 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
             for key, value in dtn.items():
 
                 if key == 'status':
-                    status_col = order_status[value]
-                    row.append(fmt_string(value, fg=status_col))
+                    if type(value) == int:
+                        status_col = order_status[value]
+                        row.append(fmt_string(value, fg=status_col))
+                    else:
+                        row.append(value)
                 elif key != 'basket':
                     if type(value) == float:
                         row.append('%.2f' % value)

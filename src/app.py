@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from pymysql import NULL
 import matplotlib.pyplot as plt
 
+
 from .DbController import DbController
 from .cli import clear, dicts_to_table, fmt_string, get_validated_input, list_to_table, validated_input
 from .file_system import LOG_LEVELS, log
@@ -708,7 +709,21 @@ def view_logs():
     
     dicts_to_table(rows, enumerated=True)
     input()
+
+
+def view_procs():
+    clear()
+    views = DbController.instance().get_available_procs()
+    list_to_table(views,'Views', enumerate=True)
+    action = get_validated_input('Select A Item To Preview: ', int, fg='Green', min_value=1, max_value=len(views), cancel_on='0')
     
+    if not action:
+        return
+    
+    dicts_to_table(DbController.instance().call_proc(views[action-1].replace(' ', '_')))
+    
+    input(fmt_string('Press Enter To Continue', fg='Green'))
+
 
 #region :=Reports
 def get_summary_by_status():
@@ -835,12 +850,14 @@ menus = {
             '[0] ⏪ Return To Main Menu',
             'Separator',
             '[1] Update Menu Grouping',
-            '[2] View System Logs'
+            '[2] View System Logs',
+            '[3] Show Available Views'
         ],
         'handlers': [
             lambda: show_menu('main_menu'),
             update_catagory_mapping,
-            view_logs
+            view_logs,
+            view_procs
         ]
     },
     'reports':{
@@ -880,7 +897,6 @@ if __name__ == '__main__':
             f'\u001b[37;1m\u001b[41;1mNo Connection To Source Could Be Established. Please Review Config\u001b[0m')
         input()
         exit()
-    
     
     while menu_state:
         show_menu(menu_state)

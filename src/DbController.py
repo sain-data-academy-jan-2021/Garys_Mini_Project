@@ -220,4 +220,8 @@ class DbController():
                 query += 'OR '
         return self.execute(query)
 
+
+    def get_available_procs(self) -> list[Any]:
+        procs = self.execute('SHOW PROCEDURE STATUS WHERE Db="mini_project"')
+        return [proc['Name'].replace('_', ' ') for proc in procs]
     
