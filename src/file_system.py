@@ -5,7 +5,7 @@ import json
 from csv import DictReader, DictWriter
 
 base_path = Path(__file__).parent.parent
-LOG_LEVELS = ['warning', 'error', 'critical', 'info', 'debug']
+LOG_LEVELS = {'critical': 5, 'error': 4, 'warning': 3, 'info': 2, 'debug': 1}
 
 
 def get_absolute_path(filepath: Any = '') -> Any:
@@ -16,6 +16,7 @@ def get_absolute_path(filepath: Any = '') -> Any:
 
 
 def log(type: str, msg: str, logfile: Path = get_absolute_path('./data/log.log')) -> None:
+
     if type.lower() not in LOG_LEVELS:
         return
 
@@ -26,6 +27,7 @@ def log(type: str, msg: str, logfile: Path = get_absolute_path('./data/log.log')
 
     except Exception as err:
         print(f'CRITICAL - Unable to create log: {str(err)}')
+        input()
 
 
 #region := Old CSV / JSON Functions

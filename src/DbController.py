@@ -60,6 +60,27 @@ class DbController():
                 input()
                 return [{'': 'error'}]
 
+
+    def call_proc(self, name: str) -> list[dict[Any, Any]]:
+        
+        #JUST FOR TEST RUNNER <--> CHECK FOR CONNECTION SHOULD BE USED##
+        if not self.connection:
+            log('error', 'No Connection To Source')
+            return [{'': 'error'}]
+
+        with self.connection.cursor() as cursor:
+            log('info', name)
+
+            try:
+                cursor.callproc(name)
+                return cursor.fetchall()  # type: ignore
+            except Exception as err:
+                log('error', str(err))
+                print(
+                    f'\u001b[37;1m\u001b[41;1mUnable To Process Request. Check Log For Details\u001b[0m')
+                input()
+                return [{'': 'error'}]
+    
     
     def escape_seq(self, seq: Sequence, parens: bool = True) -> str:
         fields_string = ''
@@ -199,24 +220,4 @@ class DbController():
                 query += 'OR '
         return self.execute(query)
 
-
-# Aggregation Stuff   
-    def get_order_status_summary(self) -> list[dict[Any, Any]]:
-        return  self.execute(
-            'SELECT UPPER(s.code) AS status, COUNT(o.status) AS count FROM orders o LEFT OUTER JOIN status s ON o.status = s.id GROUP BY status')
-
-    
-    def get_order_totals(self) -> list[dict[Any, Any]]:
-        return self.execute(
-            'SELECT o.id, UPPER(o.name) AS Name, SUM((b.quantity * p.price)) AS Total FROM basket b LEFT OUTER JOIN orders o ON b.order_id=o.id LEFT OUTER JOIN products p ON b.item=p.id GROUP BY o.id')
-
-    
-    def get_unassigned_orders(self) -> list[dict[Any, Any]]:
-        return self.execute('SELECT id, name FROM orders WHERE courier is NULL')
-    
-    
-    def get_unassigned_couriers(self) -> list[dict[Any, Any]]:
-        return self.execute('SELECT c.id, c.name FROM couriers c LEFT OUTER JOIN orders o ON o.courier=c.id WHERE o.courier is NULL')
-    
-    
     

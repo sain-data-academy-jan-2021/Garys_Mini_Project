@@ -138,6 +138,9 @@ def get_validated_input(prompt: str, *types, **options) -> Any:
 
 
 def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=False, paginate=False, **options) -> None:
+    if len(dicts) < 1:
+        return
+
     table_data = []
     show_headers = []
     if enumerated:
@@ -181,6 +184,9 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
     if paginate and total_pages > 0:
         while is_looping:
             clear()
+            if 'on_clear' in options:
+                options['on_clear']()
+
             to = (current_page * page_length + page_length + 1) if (current_page *
                                                                     page_length + page_length + 1) < total_records else total_records
             page_slice = []
@@ -214,6 +220,9 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
 
 
 def list_to_table(lst: list[str], title: str, **options) -> None:
+    if len(lst) < 1:
+        return
+
     table_data = []
     lst = [item.title() for item in lst]
 
@@ -232,18 +241,17 @@ def list_to_table(lst: list[str], title: str, **options) -> None:
             if options['enumerate']:
                 for idx, _ in enumerate(sub_list):
                     sub_list[idx] = f'[{i + idx + 1}] {sub_list[idx]}'
-        
-        
+
         split_lst.append(sub_list)
 
     for sub in split_lst:
         if sub[0] == 'Separator':
-            table_data.append(['---'.center(25,' ')])
+            table_data.append(['---'.center(25, ' ')])
         else:
             table_data.append(sub)
 
     # for i, item in enumerate(lst):
     #     table_data.append([i+1, item])
-    table = SingleTable(table_data)
+    table = SingleTable(table_data, title=title)
     table.inner_heading_row_border = False
     print(table.table)

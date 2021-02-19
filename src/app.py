@@ -1,3 +1,5 @@
+from datetime import datetime
+from math import ceil
 import os
 from typing import Any
 from dotenv import load_dotenv
@@ -6,7 +8,7 @@ import matplotlib.pyplot as plt
 
 from .DbController import DbController
 from .cli import clear, dicts_to_table, fmt_string, get_validated_input, list_to_table, validated_input
-from .file_system import log
+from .file_system import LOG_LEVELS, log
 load_dotenv()
 
 
@@ -29,17 +31,15 @@ def show_menu(menu_name: str) -> None:
     # Set the global menu_state to the selected menu to allow us to backtrack when returning
     global menu_state
     menu_state = menu_name
-    log('debug', f'Menu {menu_name} loaded')
     clear()
     print(fmt_string('Hi and Welcome to the F&B Ordering System.\n', fg='Blue'))
-
+    log('debug', f'Menu {menu_name} loaded')
     # Get the menu structure from the menus object, using it's items value to print to the screen
     menu = menus[menu_name]
     #print_table(menu['title'], menu['items'])
     list_to_table(menu['items'], menu['title'])
 
     if (menu_option := validated_input('\nPlease Select An Option.\n', int, fg='Green', min_value=0, max_value=len(menu['handlers'])-1))[0] == 0:
-        log('debug', menu_option[1])
         input(menu_option[1])
         return
 
@@ -82,7 +82,8 @@ def print_data_view(key: str) -> None:
                     clear()
                     show_order_detail_menu(order)
     else:
-        data = DbController.instance().get_all_rows(key, '*')
+        data = get_cats(DbController.instance().get_all_rows(key, '*'))
+            
         is_looping = True
         while is_looping:
             clear()
@@ -106,8 +107,22 @@ def print_data_view(key: str) -> None:
                 continue
 
 
+def get_cats(data: list[dict[Any, Any]], action: str ='join') -> list[dict[Any, Any]]:
+    cats = DbController.instance().get_all_rows('catagories', '*')
+    for row in data:
+        if 'catagory' in row:
+            if action == 'join':
+                for cat in cats:
+                    if row['catagory'] == cat['id']:
+                        row['catagory'] = cat['name']
+            elif action == 'delete':
+                del row['catagory']
+                
+    return data
+
+
 def show_add_item_menu(get_key: str) -> None:
-    data = DbController.instance().get_all_rows(get_key, '*')
+    data = get_cats(DbController.instance().get_all_rows(get_key, '*'), action='delete')
     # Use the first element in the list to establish the key structure of the data
     items = data[0].items()
     # Get a list of current names to ensure that no duplicates are passed -> passed to unique
@@ -147,7 +162,7 @@ def show_add_item_menu(get_key: str) -> None:
 
 
 def show_update_item_menu(get_key: str) -> None:
-    data = DbController.instance().get_all_rows(get_key, '*')
+    data = get_cats(DbController.instance().get_all_rows(get_key, '*'), action='delete')
     # Use the first element in the list to establish the key structure of the data
     items = data[0].items()
     # Get a list of current id to ensure a valid one is selected
@@ -185,7 +200,7 @@ def show_update_item_menu(get_key: str) -> None:
 
 
 def show_delete_item_menu(get_key: str) -> None:
-    data = DbController.instance().get_all_rows(get_key, '*')
+    data = get_cats(DbController.instance().get_all_rows(get_key, '*'), action='delete')
     # Get a list of current id to ensure a valid one is selected
     current_ids = [item['id'] for item in data]
 
@@ -601,9 +616,104 @@ def search_table(table: str):
         print(fmt_string('No Results Found', fg='White', bg='Red'))
     input(fmt_string('Press Enter To Continue', fg='Green'))
 
+
+def update_catagory_mapping():
+    is_in_cat = True
+    while is_in_cat:
+        cats = DbController.instance().get_all_rows('catagories', '*')
+        cat_ids = [item['id'] for item in cats]
+        clear()
+        dicts_to_table(cats)
+        
+        selected_catagory = get_validated_input('Please Select A Catagory To Update: ', int, fg='Blue', is_present=cat_ids, cancel_on='0')
+        
+        if not selected_catagory:
+            is_in_cat = False
+            continue
+        
+        is_editing = True
+        while is_editing:
+            data = DbController.instance().get_rows_where('products', 'name, id', 'catagory', selected_catagory)
+            product_ids = [item['id'] for item in DbController.instance().get_all_rows('products', 'id')]
+            list_names = ['*' + item['name'] for item in data]
+            list_ids = [item['id'] for item in data]
+            
+            clear()
+            list_to_table(list_names, "Current Menu", max_length=3)
+            
+            dicts_to_table(get_cats(DbController.instance().get_all_rows('products', '*')),
+                        paginate=True, 
+                        page_length=10, 
+                        on_clear=lambda: list_to_table(list_names, "Current Menu", max_length=3))
+            
+            
+            selected_item = get_validated_input('Please Select An Item To Add: ', int, fg='Blue', is_present=product_ids, cancel_on='0', cancel_text='GO BACK')
+            
+            if not selected_item:
+                is_editing = False
+                continue
+            
+            if selected_catagory == 9 and selected_item in list_ids:
+                input(fmt_string(
+                    'That Item Is Already In This Menu, But You Can Not Remove From The Default Menu', fg='White', bg='Red'))
+                continue
+                
+            elif selected_item in list_ids:
+                if input(fmt_string('That Item Is Already In This Menu. Would You Like To Remove It [y/n]? \n', fg='White', bg='Red')) == 'y':
+                    DbController.instance().update('products', selected_item, {'catagory': 9})
+                
+            else:
+                DbController.instance().update('products', selected_item, {'catagory': selected_catagory})
+        
+
+def view_logs():
+    clear()
+    list_to_table([item for item in reversed(LOG_LEVELS.keys())], 'Levels', enumerate=True)
+    log_level = get_validated_input('Please Select A Log Level: \n', int, fg='Blue', is_present=[1,2,3,4,5])
+    
+    data = []
+    try:
+        with open('./data/log.log', 'r') as log_file:
+            data = log_file.readlines()
+
+    except Exception as err:
+        log('critical', str(err))
+        
+    rows = []
+    for row in data:
+        temp_row = {}
+        temp_split = row.split(' @ ')
+        t = datetime.strptime(temp_split[0], '%Y-%m-%d %H:%M:%S.%f')
+        temp_row['time'] = t.strftime('%Y-%m-%d %H:%M')
+        temp_rest = temp_split[1]
+        rest_split = temp_rest.split(': ')
+        temp_row['type'] = rest_split[0].lower()
+        msg = rest_split[1].strip()
+        
+        max_length = int(os.get_terminal_size().columns * 0.65)
+        if len(msg) > max_length:
+            wrapped = ''
+            for i in range(ceil(len(msg) / max_length)):
+                end = ((i+1)*max_length) + 1 if ((i+1)*max_length) + 1 < len(msg) else len(msg)
+                wrapped += msg[i*max_length:end]
+                if i+1 != ceil(len(msg) / max_length):
+                    wrapped +='\n'
+        else:
+            wrapped = msg
+            
+        temp_row['message'] = wrapped
+        
+        if LOG_LEVELS[temp_row['type']] >=log_level:
+            rows.append(temp_row)
+    
+    dicts_to_table(rows, enumerated=True)
+    input()
+    
+
 #region :=Reports
 def get_summary_by_status():
-    sum = DbController.instance().get_order_status_summary()
+    #sum = DbController.instance().get_order_status_summary()
+    sum = DbController.instance().call_proc('Get_Order_Status')
     labels = [item['status'] for item in sum]
     total = 0
     for item in sum:
@@ -618,14 +728,14 @@ def get_summary_by_status():
 def get_unassigned_orders():
     clear()
     print(fmt_string('Viewing: UNASSIGNED ORDERS', fg='Cyan'))
-    data = DbController.instance().get_unassigned_orders()
+    data = DbController.instance().call_proc('Get_Unassigned_Orders')
     if len(data) > 0:
         dicts_to_table(data)
         input(fmt_string('Press ENTER To Continue', fg='Green'))
 
 
 def get_order_totals():
-    data = DbController.instance().get_order_totals()
+    data = DbController.instance().call_proc('Get_Order_Totals')
     clear()
     print(fmt_string('Viewing: TOTALS BY ORDER', fg='Cyan'))
     dicts_to_table(data)
@@ -635,11 +745,12 @@ def get_order_totals():
 def get_free_couriers():
     clear()
     print(fmt_string('Viewing: FREE COURIERS', fg='Cyan'))
-    data = DbController.instance().get_unassigned_couriers()
+    data = DbController.instance().call_proc('Get_Unassigned_Couriers')
     if len(data) > 0:
         dicts_to_table(data)
     input(fmt_string('Press ENTER To Continue', fg='Green'))
 #endregion :=Reports
+
 
 # region := Setup
 menus = {
@@ -723,11 +834,13 @@ menus = {
         'items': [
             '[0] ⏪ Return To Main Menu',
             'Separator',
-            '[1] Update Menu Grouping'
+            '[1] Update Menu Grouping',
+            '[2] View System Logs'
         ],
         'handlers': [
             lambda: show_menu('main_menu'),
-            not_implemented
+            update_catagory_mapping,
+            view_logs
         ]
     },
     'reports':{
@@ -767,6 +880,7 @@ if __name__ == '__main__':
             f'\u001b[37;1m\u001b[41;1mNo Connection To Source Could Be Established. Please Review Config\u001b[0m')
         input()
         exit()
+    
     
     while menu_state:
         show_menu(menu_state)

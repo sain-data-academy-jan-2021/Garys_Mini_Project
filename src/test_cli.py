@@ -127,7 +127,7 @@ class TestListToTable(unittest.TestCase):
         list_to_table(lst, 'test')
 
         # Then
-        mock_table.assert_called_with(expected)
+        mock_table.assert_called_with(expected, title='test')
 
     def test_should_create_correct_table_enumerated(self, mock_table):
         # Given
@@ -139,7 +139,7 @@ class TestListToTable(unittest.TestCase):
         list_to_table(lst, 'test', enumerate=True)
 
         # Then
-        mock_table.assert_called_with(expected)
+        mock_table.assert_called_with(expected, title='test')
 
     def test_should_create_correct_table_spilled(self, mock_table):
         # Given
@@ -151,7 +151,7 @@ class TestListToTable(unittest.TestCase):
         list_to_table(lst, 'test', enumerate=True, max_length=2)
 
         # Then
-        mock_table.assert_called_with(expected)
+        mock_table.assert_called_with(expected, title='test')
 
 
 if __name__ == '__main__':
