@@ -13,10 +13,6 @@ from .file_system import LOG_LEVELS, log
 load_dotenv()
 
 
-def not_implemented():
-    input(fmt_string('Feature Not Yet Implemented', fg='White', bg='Red'))
-
-
 def get_order_data(sort: str = 'o.status') -> list[dict[Any, Any]]:
     return DbController.instance().get_joins(
         fields=['o.id', 'o.name', 'o.address',
@@ -48,6 +44,7 @@ def show_menu(menu_name: str) -> None:
     menu['handlers'][menu_option[1]]()
 
 
+# TODO: Break Out Into Orders / Other
 def print_data_view(key: str) -> None:
     if key == 'orders':
         is_looping = True
@@ -122,6 +119,7 @@ def get_cats(data: list[dict[Any, Any]], action: str ='join') -> list[dict[Any, 
     return data
 
 
+# TODO: Potential `DictBuilder` Function To Strip Away Input??
 def show_add_item_menu(get_key: str) -> None:
     data = get_cats(DbController.instance().get_all_rows(get_key, '*'), action='delete')
     # Use the first element in the list to establish the key structure of the data
@@ -362,6 +360,7 @@ def show_update_status_menu() -> None:
             continue
 
 
+# TODO:
 def show_update_order_menu() -> None:
     data = get_order_data()
 
@@ -474,6 +473,7 @@ def show_delete_order_menu() -> None:
             is_looping = False
 
 
+# TODO: This Is A Lot ... What Can We Do??
 def select_order_items(order_id) -> None:
     current_basket = list(DbController.instance().get_joins_where(
         source='basket b',
@@ -667,6 +667,7 @@ def update_catagory_mapping():
                 DbController.instance().update('products', selected_item, {'catagory': selected_catagory})
         
 
+# TODO: Use WordWrap Library Rather Than Customer Impl.
 def view_logs():
     clear()
     list_to_table([item for item in reversed(LOG_LEVELS.keys())], 'Levels', enumerate=True)
@@ -734,7 +735,7 @@ def get_summary_by_status():
     for item in sum:
         total += item['count']
     sizes = [item['count']/total for item in sum]    
-    fig1, ax1 = plt.subplots()
+    _, ax1 = plt.subplots()
     ax1.pie(sizes, labels=labels, autopct='%1.1f%%', shadow=True, startangle=90) #type: ignore
     ax1.axis('equal') # type: ignore
     plt.show()
