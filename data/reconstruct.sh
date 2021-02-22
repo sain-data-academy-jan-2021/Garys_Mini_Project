@@ -1,0 +1,1 @@
+mysql -u root -p${mysql_pass} < /data/reconstruct.sql

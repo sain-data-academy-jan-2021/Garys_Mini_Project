@@ -1,0 +1,28 @@
+version: "3.8"
+services:
+  db:
+    image: mysql
+    container_name: mysql_container_compose
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: "${mysql_pass}"
+    ports:
+      - "3306:3306"
+    volumes:
+      - example_db
+      - type: bind
+        source: ./data/reconstruct.sql
+        target: /data/reconstruct.sql
+      - type: bind
+        source: ./data/reconstruct.sh
+        target: /data/reconstruct.sh
+    tty: true
+    stdin_open: true
+  adminer:
+    image: adminer
+    container_name: adminer_container_compose
+    restart: always
+    ports:
+      - 8080:8080
+volumes:
+  example_db:
