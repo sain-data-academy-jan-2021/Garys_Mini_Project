@@ -1,5 +1,5 @@
 import os
-from typing import Any
+from typing import Any, Callable
 from terminaltables import SingleTable
 from math import ceil
 
@@ -165,7 +165,7 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
             for key, value in dtn.items():
 
                 if key == 'status':
-                    if type(value) == int:
+                    if type(value) != int:
                         status_col = order_status[value]
                         row.append(fmt_string(value, fg=status_col))
                     else:
@@ -258,3 +258,35 @@ def list_to_table(lst: list[str], title: str, **options) -> None:
     table = SingleTable(table_data, title=title)
     table.inner_heading_row_border = False
     print(table.table)
+
+
+def dict_builder(schema: dict[Any, Any], ignore_keys: list[Any] = [], validation: dict[Any, dict[Any, Any]] = {'all': {}}, override: dict[Any, Any] = {}, on_key: dict[Any, list[Callable]] = {}, defaults: dict[Any, Any] = {}):
+    new_dict = {}
+
+    for key, value in schema.items():
+        if key not in ignore_keys:
+
+            if key in on_key:
+                for func in on_key[key]:
+                    func()
+
+            if key in validation:
+                new_value = get_validated_input(
+                    f'Please Enter {key.replace("_"," ").title()}: ', value, **dict(validation[key], **validation['all']))
+            else:
+                new_value = get_validated_input(
+                    f'Please Enter {key.replace("_"," ").title()}: ', value, **validation['all'])
+
+            if not new_value and key in override:
+                new_value = override[key]
+            elif not new_value and key in defaults:
+                if key in override:
+                    new_dict[key] = override[key]
+                else:
+                    new_value = defaults[key]
+            elif not new_value:
+                return False
+
+            new_dict[key] = new_value
+
+    return new_dict
