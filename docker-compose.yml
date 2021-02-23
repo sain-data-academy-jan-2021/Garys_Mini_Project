@@ -2,7 +2,7 @@ version: "3.8"
 services:
   db:
     image: mysql
-    container_name: mysql_container_compose
+    container_name: mysql_container
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: "${mysql_pass}"
@@ -16,13 +16,35 @@ services:
       - type: bind
         source: ./data/reconstruct.sh
         target: /data/reconstruct.sh
+      - type: bind
+        source: ./.env
+        target: /.env
     tty: true
     stdin_open: true
+    networks: 
+      - backend
   adminer:
     image: adminer
-    container_name: adminer_container_compose
+    container_name: adminer_container
     restart: always
     ports:
       - 8080:8080
+    networks: 
+      - backend
+  # mini_project_app:
+  #   build: .
+  #   container_name: mini_project_app_container
+  #   stdin_open: true
+  #   tty: true
+  #   depends_on: 
+  #     - db
+  #     - adminer
+  #   networks: 
+  #     - backend
+  #   env_file: dev.env
+
 volumes:
   example_db:
+networks: 
+  backend:
+    driver: bridge

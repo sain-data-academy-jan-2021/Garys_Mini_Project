@@ -6,6 +6,6 @@ COPY . .
 
 RUN pip3 install -r data/requirements.txt
 
-EXPOSE 80
+EXPOSE 8080
 
 ENTRYPOINT [ "python3", "-m", "src.app" ]
