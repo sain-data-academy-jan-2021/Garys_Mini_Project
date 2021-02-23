@@ -2,6 +2,7 @@ import os
 from typing import Any, Callable
 from terminaltables import SingleTable
 from math import ceil
+import re
 
 colors = {
     'Black': 30,
@@ -116,6 +117,10 @@ def validated_input(prompt: str, *types, **options) -> tuple[int, Any]:
         if len(str(value)) > options['max_length']:
             return 0, fmt_string(f'Length of input [{len(str(value))}] is greater than the maximum length [{options["max_length"]}]', fg='White', bg='Red')
 
+
+    if type(value) == str:
+        value = re.sub(r'[^0-9a-zA-Z\s]+', '', value)
+
     return 1, value
 
 
@@ -127,7 +132,6 @@ def get_validated_input(prompt: str, *types, **options) -> Any:
         return False
 
     while res != 1:
-        print(value)
 
         res, value = validated_input(prompt, *types, **options)
 
@@ -166,7 +170,7 @@ def dicts_to_table(dicts: list[dict[Any, Any]], headers: list = [], enumerated=F
 
                 if key == 'status':
                     if type(value) != int:
-                        status_col = order_status[value]
+                        status_col = order_status[value.lower()]
                         row.append(fmt_string(value, fg=status_col))
                     else:
                         row.append(value)
@@ -260,7 +264,7 @@ def list_to_table(lst: list[str], title: str, **options) -> None:
     print(table.table)
 
 
-def dict_builder(schema: dict[Any, Any], ignore_keys: list[Any] = [], validation: dict[Any, dict[Any, Any]] = {'all': {}}, override: dict[Any, Any] = {}, on_key: dict[Any, list[Callable]] = {}, defaults: dict[Any, Any] = {}):
+def dict_builder(schema: dict[Any, Any], ignore_keys: list[Any] = [], validation: dict[Any, dict[Any, Any]] = {'all': {'cancel_on': '0'}}, on_cancel: str = 'return', override: dict[Any, Any] = {}, on_key: dict[Any, list[Callable]] = {}, defaults: dict[Any, Any] = {}):
     new_dict = {}
 
     for key, value in schema.items():
@@ -272,18 +276,20 @@ def dict_builder(schema: dict[Any, Any], ignore_keys: list[Any] = [], validation
 
             if key in validation:
                 new_value = get_validated_input(
-                    f'Please Enter {key.replace("_"," ").title()}: ', value, **dict(validation[key], **validation['all']))
+                    f'Please Enter {key.replace("_"," ").title()}: ', value, **dict(validation['all'], **validation[key]))
             else:
                 new_value = get_validated_input(
                     f'Please Enter {key.replace("_"," ").title()}: ', value, **validation['all'])
 
-            if not new_value and key in override:
-                new_value = override[key]
-            elif not new_value and key in defaults:
+            if not new_value and key in defaults:
                 if key in override:
-                    new_dict[key] = override[key]
+                    new_value = override[key]
                 else:
                     new_value = defaults[key]
+            elif not new_value and key in override:
+                new_value = override[key]
+            elif not new_value and on_cancel == 'skip':
+                continue
             elif not new_value:
                 return False
 
