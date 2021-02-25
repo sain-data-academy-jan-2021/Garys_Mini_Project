@@ -119,7 +119,7 @@ def validated_input(prompt: str, *types, **options) -> tuple[int, Any]:
 
 
     if type(value) == str:
-        value = re.sub(r'[^0-9a-zA-Z\s]+', '', value)
+        value = re.sub(r'[^0-9a-zA-Z\s &-]+', '', value)
 
     return 1, value
 

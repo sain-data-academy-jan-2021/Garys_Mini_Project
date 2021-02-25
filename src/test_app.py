@@ -3,9 +3,9 @@ from unittest.mock import patch
 
 from pymysql import NULL
 
-from .DbController import DbController
+from src.DbController import DbController
 
-from .app import get_cats, show_add_item_menu, show_add_order_menu, show_delete_item_menu, show_update_item_menu, show_update_order_menu, show_update_status_menu
+from src.app import get_cats, show_add_item_menu, show_add_order_menu, show_delete_item_menu, show_update_item_menu, show_update_order_menu, show_update_status_menu
 
 DbController('','','','')
 

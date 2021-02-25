@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from .DbController import DbController
+from src.DbController import DbController
 
 DbController('','','','')
 instance = DbController.instance()

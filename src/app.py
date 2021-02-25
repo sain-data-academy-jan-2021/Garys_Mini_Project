@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 import matplotlib.pyplot as plt
 import textwrap
 
-from .DbController import DbController
-from .cli import clear, dicts_to_table, fmt_string, get_validated_input, list_to_table, validated_input, dict_builder
-from .file_system import LOG_LEVELS, log
+from src.cli import clear, dicts_to_table, fmt_string, get_validated_input, list_to_table, validated_input, dict_builder
+from src.DbController import DbController
+from src.file_system import LOG_LEVELS, log
 load_dotenv()
 
 
@@ -389,10 +389,10 @@ def show_update_order_menu() -> None:
 
         new_dict = dict_builder(
             schema, ['id'], validation, on_key=on_key, on_cancel='skip')
-        if not new_dict:
-            return
-
-        DbController.instance().update('orders', id, new_dict)
+        
+        if new_dict:
+            DbController.instance().update('orders', id, new_dict)
+            
         select_order_items(id)
 
         clear()
@@ -840,15 +840,3 @@ if __name__ == '__main__':
 # endregion :=Setup
 
 # pytest --cov-config=.coveragerc --cov-report term:skip-covered --cov=.
-
-
-####### Lesley-Ashley Join ###########
-# SELECT o.name AS order_name, 
-#    GROUP_CONCAT(p.name separator ', ') AS product_id 
-# FROM orders o
-# LEFT JOIN basket b 
-#   ON b.order_id = o.id
-# LEFT JOIN products p 
-#   ON b.item = p.id
-# WHERE p.name is not NULL
-# GROUP BY o.id

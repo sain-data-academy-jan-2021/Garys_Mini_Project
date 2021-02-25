@@ -1,8 +1,6 @@
 import datetime
 from pathlib import Path
 from typing import Any
-import json
-from csv import DictReader, DictWriter
 
 base_path = Path(__file__).parent.parent
 LOG_LEVELS = {'critical': 5, 'error': 4, 'warning': 3, 'info': 2, 'debug': 1}

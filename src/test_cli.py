@@ -2,7 +2,7 @@ from typing import overload
 import unittest
 from unittest.mock import patch, Mock
 
-from .cli import dict_builder, dicts_to_table, fmt_string, get_validated_input, list_to_table, validated_input
+from src.cli import dict_builder, dicts_to_table, fmt_string, get_validated_input, list_to_table, validated_input
 
 
 class TestValidatedInput(unittest.TestCase):
