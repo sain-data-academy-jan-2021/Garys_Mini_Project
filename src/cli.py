@@ -132,7 +132,7 @@ def get_validated_input(prompt: str, *types, **options) -> Any:
         return False
 
     while res != 1:
-
+        print(value)
         res, value = validated_input(prompt, *types, **options)
 
         if res == -1:

@@ -36,7 +36,7 @@ def get_cats(data: list[dict[Any, Any]], action: str = 'join') -> list[dict[Any,
     return data
 
 
-#region := App
+# region := App
 def show_menu(menu_name: str) -> None:
     # Set the global menu_state to the selected menu to allow us to backtrack when returning
     global menu_state
@@ -79,8 +79,8 @@ def print_data_view(key: str) -> None:
             sort_key = get_validated_input(
                 'How Would You Like To Sort By [id]? ', int, fg='Blue', min_value=1, max_value=len(sort_on_keys), cancel_on=0)
             # Refresh data with selected sort order
-            data = DbController.instance().get_all_rows(
-                key, '*', order=f'ORDER BY {sort_key}')
+            data = get_cats(DbController.instance().get_all_rows(
+                key, '*', order=f'ORDER BY {sort_key}'))
             continue
 
 
@@ -142,6 +142,8 @@ def show_update_item_menu(get_key: str) -> None:
 
         DbController.instance().update(get_key, id, new_dict)
         clear()
+        data = get_cats(DbController.instance().get_all_rows(
+            get_key, '*'), action='delete')
         dicts_to_table(data)
 
         if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
@@ -166,7 +168,8 @@ def show_delete_item_menu(get_key: str) -> None:
         DbController.instance().delete(get_key, item_id)
 
         clear()
-        data = DbController.instance().get_all_rows(get_key, '*')
+        data = get_cats(DbController.instance().get_all_rows(
+            get_key, '*'), action='delete')
         dicts_to_table(data)
 
         if input(fmt_string('Item SuccessFully Added. Would You Like To Add Another?[y/n]\n', fg='Green')) == 'n':
@@ -383,12 +386,12 @@ def show_update_order_menu() -> None:
             'status': [clear, lambda: dicts_to_table(order), lambda: dicts_to_table(status_list)],
             'courier': [clear, lambda: dicts_to_table(order), lambda: dicts_to_table(courier_list)]
         }
-        
+
         new_dict = dict_builder(
             schema, ['id'], validation, on_key=on_key, on_cancel='skip')
         if not new_dict:
             return
-        
+
         DbController.instance().update('orders', id, new_dict)
         select_order_items(id)
 
@@ -600,7 +603,7 @@ def update_catagory_mapping():
             else:
                 DbController.instance().update('products', selected_item,
                                                {'catagory': selected_catagory})
-#endregion := App
+# endregion := App
 
 
 # region :=Reports
@@ -820,13 +823,13 @@ if __name__ == '__main__':
     user = os.environ.get("mysql_user")
     password = os.environ.get("mysql_pass")
     database = os.environ.get("mysql_db")
-    
+
     DbController(host, user, password, database)  # type: ignore
-    
+
     # If you can't connect to the DB, log, inform user and close the app
     if not DbController.instance().connection:
         log('critical', 'No Connection To Source Could Be Established')
-        print(host,user, password, database)
+        print(host, user, password, database)
         print(
             f'\u001b[37;1m\u001b[41;1mNo Connection To Source Could Be Established. Please Review Config\u001b[0m')
         input()
@@ -836,5 +839,16 @@ if __name__ == '__main__':
     DbController.instance().close()
 # endregion :=Setup
 
-
 # pytest --cov-config=.coveragerc --cov-report term:skip-covered --cov=.
+
+
+####### Lesley-Ashley Join ###########
+# SELECT o.name AS order_name, 
+#    GROUP_CONCAT(p.name separator ', ') AS product_id 
+# FROM orders o
+# LEFT JOIN basket b 
+#   ON b.order_id = o.id
+# LEFT JOIN products p 
+#   ON b.item = p.id
+# WHERE p.name is not NULL
+# GROUP BY o.id

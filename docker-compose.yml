@@ -25,7 +25,7 @@ services:
     container_name: adminer_container
     restart: always
     environment:
-      ADMINER_DESIGN: "pappu687"
+      ADMINER_DESIGN: "rmsoft_blue"
     ports:
       - 8080:8080
     networks: 
