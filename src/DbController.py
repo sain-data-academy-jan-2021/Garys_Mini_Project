@@ -41,7 +41,6 @@ class DbController():
     
     def execute(self, sql: str) -> list[dict[Any, Any]]:
         
-        ##JUST FOR TEST RUNNER <--> CHECK FOR CONNECTION SHOULD BE USED##
         if not self.connection:
             log('error', 'No Connection To Source')
             return [{'':'error'}]
@@ -63,7 +62,6 @@ class DbController():
 
     def call_proc(self, name: str) -> list[dict[Any, Any]]:
         
-        #JUST FOR TEST RUNNER <--> CHECK FOR CONNECTION SHOULD BE USED##
         if not self.connection:
             log('error', 'No Connection To Source')
             return [{'': 'error'}]

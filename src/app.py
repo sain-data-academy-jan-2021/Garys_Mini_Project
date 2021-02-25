@@ -10,7 +10,6 @@ from .cli import clear, dicts_to_table, fmt_string, get_validated_input, list_to
 from .file_system import LOG_LEVELS, log
 load_dotenv()
 
-## TODO: Rebuild Procs And Add To Reconstruction Script
 
 def get_order_data(sort: str = 'o.status') -> list[dict[Any, Any]]:
     return DbController.instance().get_joins(
@@ -216,7 +215,7 @@ def print_order_view():
 
         if index == -1:
             clear()
-            dicts_to_table(data, paginate=True)
+            dicts_to_table(data, paginate=False)
             # Get a list of the current coloum names to be used in a sort order
             sort_on_keys = list(data[0].keys())
             list_to_table(sort_on_keys, 'Available Sorts', enumerate=True)
@@ -302,7 +301,6 @@ def show_add_order_menu() -> None:
 
 def show_update_status_menu() -> None:
     data = get_order_data()
-    status_list = DbController.instance().get_all_rows('status', '*')
     current_ids = [order['id'] for order in data]
 
     is_looping = True
@@ -378,37 +376,24 @@ def show_update_order_menu() -> None:
         schema['status'] = int
         validation = {
             'all': {'min_length': 0, 'cancel_on': '', 'cancel_text': 'SKIP', 'fg': 'Blue'},
-            'status': {'is_present': status_ids},
-            'courier': {'is_present': courier_ids}
-        }
-        override = {
-            'status': DbController.instance().get_rows_where('orders', 'status', 'id', id)[0]['status'],
-            'courier': DbController.instance().get_rows_where('orders', 'courier', 'id', id)[0]['courier']
+            'status': {'is_present': status_ids, 'cancel_on': '0'},
+            'courier': {'is_present': courier_ids, 'cancel_on': '0'}
         }
         on_key = {
             'status': [clear, lambda: dicts_to_table(order), lambda: dicts_to_table(status_list)],
             'courier': [clear, lambda: dicts_to_table(order), lambda: dicts_to_table(courier_list)]
         }
-        defaults = order[0]
         
         new_dict = dict_builder(
-            schema, ['id'], validation, override=override, on_key=on_key, defaults=defaults)
+            schema, ['id'], validation, on_key=on_key, on_cancel='skip')
         if not new_dict:
             return
-
+        
         DbController.instance().update('orders', id, new_dict)
         select_order_items(id)
 
         clear()
-        order = DbController.instance().get_joins_where(
-            fields=['o.id', 'o.name', 'o.address',
-                    'o.area', 'o.phone', 'courier.name AS courier', 's.code AS status'],
-            source='orders o',
-            targets=['couriers courier', 'status s'],
-            conditions=['courier.id = o.courier', 's.id = o.status'],
-            where=f'o.id = {id}',
-            order='ORDER BY o.status'
-        )
+        data = get_order_data()
         dicts_to_table(data)
 
         if input(fmt_string('Item SuccessFully Updated. Would You Like To Update Another?[y/n]\n', fg='Green')) == 'n':
@@ -674,8 +659,7 @@ def view_procs():
 
 
 def get_summary_by_status():
-    #sum = DbController.instance().get_order_status_summary()
-    sum = DbController.instance().call_proc('Get_Order_Status')
+    sum = DbController.instance().call_proc('get_order_status_summary')
     labels = [item['status'] for item in sum]
     total = 0
     for item in sum:
@@ -691,14 +675,14 @@ def get_summary_by_status():
 def get_unassigned_orders():
     clear()
     print(fmt_string('Viewing: UNASSIGNED ORDERS', fg='Cyan'))
-    data = DbController.instance().call_proc('Get_Unassigned_Orders')
+    data = DbController.instance().call_proc('get_unassigned_orders')
     if len(data) > 0:
         dicts_to_table(data)
         input(fmt_string('Press ENTER To Continue', fg='Green'))
 
 
 def get_order_totals():
-    data = DbController.instance().call_proc('Get_Order_Totals')
+    data = DbController.instance().call_proc('get_order_totals')
     clear()
     print(fmt_string('Viewing: TOTALS BY ORDER', fg='Cyan'))
     dicts_to_table(data)
@@ -708,7 +692,7 @@ def get_order_totals():
 def get_free_couriers():
     clear()
     print(fmt_string('Viewing: FREE COURIERS', fg='Cyan'))
-    data = DbController.instance().call_proc('Get_Unassigned_Couriers')
+    data = DbController.instance().call_proc('get_unassigned_couriers')
     if len(data) > 0:
         dicts_to_table(data)
     input(fmt_string('Press ENTER To Continue', fg='Green'))
@@ -836,8 +820,9 @@ if __name__ == '__main__':
     user = os.environ.get("mysql_user")
     password = os.environ.get("mysql_pass")
     database = os.environ.get("mysql_db")
+    
     DbController(host, user, password, database)  # type: ignore
-
+    
     # If you can't connect to the DB, log, inform user and close the app
     if not DbController.instance().connection:
         log('critical', 'No Connection To Source Could Be Established')

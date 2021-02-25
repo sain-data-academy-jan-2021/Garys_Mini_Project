@@ -14,9 +14,6 @@ services:
         source: ./data/reconstruct.sql
         target: /data/reconstruct.sql
       - type: bind
-        source: ./data/reconstruct.sh
-        target: /data/reconstruct.sh
-      - type: bind
         source: ./.env
         target: /.env
     tty: true
@@ -24,25 +21,15 @@ services:
     networks: 
       - backend
   adminer:
-    image: adminer
+    image: adminer:latest
     container_name: adminer_container
     restart: always
+    environment:
+      ADMINER_DESIGN: "pappu687"
     ports:
       - 8080:8080
     networks: 
       - backend
-  # mini_project_app:
-  #   build: .
-  #   container_name: mini_project_app_container
-  #   stdin_open: true
-  #   tty: true
-  #   depends_on: 
-  #     - db
-  #     - adminer
-  #   networks: 
-  #     - backend
-  #   env_file: dev.env
-
 volumes:
   example_db:
 networks: 

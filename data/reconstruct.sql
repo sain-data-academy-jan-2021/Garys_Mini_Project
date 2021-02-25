@@ -9,6 +9,26 @@ DROP DATABASE IF EXISTS `mini_project`;
 CREATE DATABASE `mini_project` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
 USE `mini_project`;
 
+DELIMITER ;;
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `get_order_status_summary`()
+SELECT UPPER(s.code) AS status, COUNT(o.status) AS count FROM orders o LEFT OUTER JOIN status s ON o.status = s.id GROUP BY status;;
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `get_order_totals`()
+SELECT o.id, UPPER(o.name) AS Name, SUM((b.quantity * p.price)) AS Total FROM basket b LEFT OUTER JOIN orders o ON b.order_id=o.id LEFT OUTER JOIN products p ON b.item=p.id GROUP BY o.id;;
+
+CREATE PROCEDURE `get_unassigned_couriers`()
+SELECT c.id, c.name 
+FROM couriers c 
+LEFT OUTER JOIN orders o 
+ON o.courier=c.id 
+WHERE o.courier is NULL;;
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `get_unassigned_orders`()
+SELECT id, name FROM orders WHERE courier is NULL;;
+
+DELIMITER ;
+
 DROP TABLE IF EXISTS `basket`;
 CREATE TABLE `basket` (
   `order_id` int NOT NULL,
@@ -126,14 +146,24 @@ INSERT INTO `orders` (`id`, `name`, `address`, `area`, `phone`, `courier`, `stat
 (1,	'rebecca k ingram',	'128 north promenade',	'hr18pa',	'07033918495',	NULL,	1),
 (2,	'niamh l mahmood',	'140 thompsons lane',	'ph28wn',	'07031221095',	NULL,	1),
 (3,	'declan j lane',	'102 newmarket road',	'de562ad',	'07705692817',	1,	2),
-(4,	'poppy d clements',	'116 glenurquhart road',	'yo71fh',	'07858838750',	NULL,	2),
+(4,	'poppy d clements',	'116 glenurquhart road',	'yo71fh',	'07858838750',	5,	2),
 (5,	'maisie s read',	'74 cheriton road',	'dl61hy',	'07711870333',	3,	2),
 (6,	'joe p bloggs',	'1 some town',	'wh12er',	'07514875451',	4,	2),
 (7,	'sean k holden',	'110 redcliffe way',	'b603rq',	'07930379341',	8,	3),
 (8,	'kai m chamberlain',	'82 shore street',	'ca58xz',	'07027310489',	2,	3),
 (9,	'john f doe',	'100 someplace',	'ts149ae',	'01635154874',	2,	4),
-(10,	'connor c stewart',	'75 mill lane',	'dg91hd',	'07001194616',	NULL,	5),
-(11,	'alice d bloggs',	'24 grove green road',	'ec19tl',	'07854875414',	NULL,	6);
+(10,	'connor c stewart',	'75 mill lane',	'dg91hd',	'07001194616',	1,	5),
+(11,	'alice d bloggs',	'24 grove green road',	'ec19tl',	'07854875414',	11,	6),
+(12,	'connor p reynolds',	'57 ploughy rd',	'ab415wn',	'07889801334',	13,	5),
+(13,	'samuel s marsh',	'90 holburn lane',	'yo413ge',	'07070257322',	7,	6),
+(14,	'matthew k russell',	'117 scrimshire lane',	'hs28ae',	'07858629795',	4,	6),
+(15,	'jamie e haynes',	'57 gloucester road',	'dd86hd',	'07831598038',	12,	5),
+(16,	'jude p simmons',	'73 emmerson road',	'dn71gw',	'07886666963',	3,	6),
+(17,	'ruby l bryan',	'129 warner close',	'ts234ua',	'07935461600',	8,	3),
+(18,	'callum j shepherd',	'58 wressle road',	'ox81jy',	'07769988834',	11,	3),
+(19,	'amelia m oliver',	'26 osborne road',	'pa617ha',	'07881772765',	7,	4),
+(20,	'george g franklin',	'104 station rd',	'ld3 9pw',	'07075727617',	6,	4),
+(21,	'lauren s naylor',	'105 emerson road',	'hd87sg',	'07756413950',	10,	4);
 
 DROP TABLE IF EXISTS `products`;
 CREATE TABLE `products` (
