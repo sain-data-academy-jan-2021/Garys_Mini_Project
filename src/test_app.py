@@ -111,7 +111,7 @@ class TestGetCats(unittest.TestCase):
 @patch('src.app.dict_builder')
 @patch('src.app.dicts_to_table', lambda x: None)
 @patch('src.app.clear', lambda: None)
-@patch('src.app.get_cats', lambda *x, **k: [{'id': 1, 'name': 'test_name'}])
+@patch('src.app.DbController.get_all_rows', lambda *x, **k: [{'id': 1, 'name': 'test_name'}])
 class TestAddItemMenu(unittest.TestCase):
 
     def test_should_call_sql_with_correct_dict(self,mock_builder, mock_insert, mock_input):
@@ -146,7 +146,7 @@ class TestAddItemMenu(unittest.TestCase):
 @patch('src.app.dict_builder')
 @patch('src.app.dicts_to_table', lambda x: None)
 @patch('src.app.clear', lambda: None)
-@patch('src.app.get_cats', lambda *x, **k: [{'id': 1, 'name': 'test_name'}])
+@patch('src.app.DbController.get_all_rows', lambda *x, **k: [{'id': 1, 'name': 'test_name'}])
 class TestUpdateItemMenu(unittest.TestCase):
 
     def test_should_call_sql_with_correct_dict(self, mock_builder, mock_update, mock_input, mock_valid_input):

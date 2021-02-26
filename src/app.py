@@ -190,7 +190,7 @@ def search_table(table: str):
             conditions=['courier.id = o.courier', 's.id = o.status']
         )
     else:
-        data = DbController.instance().search_table(table, term)
+        data = get_cats(DbController.instance().search_table(table, term), action='join')
 
     if len(data) > 0:
         dicts_to_table(data)
@@ -257,8 +257,14 @@ def show_order_detail_menu(order) -> None:
         where=f'o.id = {order["id"]}',
         type='INNER'
     )
+    
+    sub = 0
+    for item in items:
+        sub += item['Sub Total']
 
     if len(items) > 0:
+        items.append({'#x': '', 'name': '', 'Sub Total': '----------'})
+        items.append({'#x': '', 'name':'', 'Sub Total': sub})
         dicts_to_table(items)
     else:
         print(fmt_string('Order: ', fg='Blue'),
