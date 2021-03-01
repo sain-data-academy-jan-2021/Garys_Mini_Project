@@ -8,7 +8,7 @@ from pymysql import NULL
 from src.file_system import log
 
 
-class DbController():
+class DbController(object):
 
     inst = None
 
@@ -18,18 +18,19 @@ class DbController():
         conv[246] = float
 
         if cls.inst == None:
-            cls.inst = object.__new__(cls)
+            cls.inst = super().__new__(cls)
             try:
                 cls.connection = pymysql.connect(
-                    host,
-                    user,
-                    password,
-                    database,
+                    host=host,
+                    user=user,
+                    password=password,
+                    database=database,
                     autocommit=autocommit,
                     cursorclass=pymysql.cursors.DictCursor,
                     conv=conv
                 )
             except Exception as err:
+                print(err)
                 cls.connection = None
 
         return cls.inst
@@ -56,7 +57,6 @@ class DbController():
                 log('error', sql)
                 print(
                     f'\u001b[37;1m\u001b[41;1mUnable To Process Request. Check Log For Details\u001b[0m')
-                input()
                 return [{'': 'error'}]
 
 
@@ -149,6 +149,7 @@ class DbController():
 
     
     def update(self, table: str, id: int, dtn: dict[str, Any]):
+        print(dtn)
         query = ''
         for k, v in dtn.items():
             if v == None:
@@ -157,7 +158,7 @@ class DbController():
             else:
                 query += f"{k} = '{v}', "
         query = query[0:-2]
-        self.execute(f'UPDATE {table} SET {query} WHERE id = {id}')
+        return self.execute(f'UPDATE {table} SET {query} WHERE id = {id}')
 
     
     def update_where(self, table: str, where_fields: list[str],  where_conditions: list[str], dtn: dict[str, Any]):
