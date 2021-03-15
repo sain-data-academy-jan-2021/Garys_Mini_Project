@@ -5,12 +5,12 @@ from dotenv import load_dotenv
 import matplotlib.pyplot as plt
 import textwrap
 
+
 from src.cli import clear, dicts_to_table, fmt_string, get_validated_input, list_to_table, validated_input, dict_builder
 from src.DbController import DbController
 from src.file_system import LOG_LEVELS, log
 load_dotenv()
 
-# This Is A Comment
 def get_order_data(sort: str = 'o.status') -> list[dict[Any, Any]]:
     return DbController.instance().get_joins(
         fields=['o.id', 'o.name', 'o.address',
