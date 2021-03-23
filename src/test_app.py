@@ -69,7 +69,7 @@ class TestUpdateStatus(unittest.TestCase):
         #Then
         assert mock_update.call_count == 0
 
-
+# Why
 @patch('src.app.DbController.get_all_rows', lambda *a: [{'id': 1, 'name': 'test_catagory'}])
 class TestGetCats(unittest.TestCase):
     
